@@ -8,6 +8,11 @@ A sleek, modern custom light card for [Home Assistant](https://www.home-assistan
 
 ---
 
+## DISCLAIMER
+This is almost 100% AI-written, human-tested code.
+
+---
+
 ## Features
 
 - **Multi-Light Group Selection Bar**:
