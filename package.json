@@ -1,0 +1,28 @@
+{
+  "name": "ha-light-card",
+  "version": "1.0.0",
+  "description": "A sleek, modern custom Home Assistant card for light control",
+  "main": "dist/ha-light-card.js",
+  "module": "dist/ha-light-card.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node -e \"import('node:fs').then(fs => fs.copyFileSync('dist/ha-light-card.js', 'ha-light-card.js'))\"",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "home-assistant",
+    "homeassistant",
+    "lovelace",
+    "custom-card",
+    "light-card",
+    "hacs"
+  ],
+  "author": "Logan",
+  "license": "MIT",
+  "devDependencies": {
+    "lit": "^3.2.1",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
+}

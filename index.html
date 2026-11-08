@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HA Light Card - Dev Environment</title>
+  <style>
+    :root {
+      --ha-card-background: #18181b;
+      --card-background-color: #18181b;
+      --primary-text-color: #ffffff;
+      --secondary-text-color: #9ca3af;
+      --ha-card-border-radius: 24px;
+    }
+
+    body {
+      background-color: #0c0c0e;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .info-panel {
+      background: #18181b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .info-panel h3 {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      color: #f59e0b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+    }
+
+    .state-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-family: monospace;
+      color: #9ca3af;
+    }
+
+    .state-grid span {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .config-toggles {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+    }
+
+    .config-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    input[type="checkbox"] {
+      accent-color: #f59e0b;
+      cursor: pointer;
+    }
+
+    input[type="number"] {
+      width: 60px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: #27272a;
+      color: #ffffff;
+      outline: none;
+    }
+  </style>
+  <script type="module" src="/src/ha-light-card.ts"></script>
+</head>
+<body>
+  <div class="container">
+    <div id="card-wrapper"></div>
+
+    <div class="info-panel">
+      <h3>Mock Home Assistant State</h3>
+      <div class="state-grid">
+        <div>Power: <span id="debug-power">on</span></div>
+        <div>Adaptive: <span id="debug-adaptive">on</span></div>
+        <div>Brightness: <span id="debug-brightness">60%</span></div>
+        <div>Kelvin: <span id="debug-kelvin">2700 K</span></div>
+        <div style="grid-column: span 2;">RGB: <span id="debug-rgb">255, 166, 87</span></div>
+        <div style="grid-column: span 2; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 6px; margin-top: 2px;">
+          <strong>Individual Lights:</strong><br>
+          • Lamp Left: <span id="debug-lamp-left">on (55%)</span><br>
+          • Lamp Right: <span id="debug-lamp-right">on (55%)</span><br>
+          • Ceiling: <span id="debug-ceiling">off (78%)</span>
+        </div>
+      </div>
+
+      <div class="config-toggles">
+        <div class="config-row">
+          <span>Show Subtitle</span>
+          <input type="checkbox" id="toggle-show-subtitle" checked>
+        </div>
+        <div class="config-row">
+          <span>Editable Subtitle</span>
+          <input type="checkbox" id="toggle-editable-subtitle" checked>
+        </div>
+        <div class="config-row">
+          <span>Show All Mode Buttons</span>
+          <input type="checkbox" id="toggle-all-buttons">
+        </div>
+        <div class="config-row">
+          <span>Color Subtitle Format</span>
+          <select id="select-color-format" style="padding: 4px 8px; border-radius: 6px; background: #27272a; color: #fff; border: 1px solid #3f3f46; outline: none; cursor: pointer;">
+            <option value="rgb">RGB (RGB: 255, 166, 87)</option>
+            <option value="hex">Hex (#FFA657)</option>
+            <option value="both">RGB & Hex (RGB: 255, 166, 87 | #FFA657)</option>
+          </select>
+        </div>
+        <div class="config-row">
+          <span>Max Preset Rows (preset_max_rows)</span>
+          <input type="number" id="input-max-rows" min="1" max="10" value="3">
+        </div>
+        <div class="config-row">
+          <span>Show Presets</span>
+          <input type="checkbox" id="toggle-show-presets" checked>
+        </div>
+        <div class="config-row">
+          <span>Simulate Many Presets (>3 rows)</span>
+          <input type="checkbox" id="toggle-many-presets">
+        </div>
+        <div class="config-row">
+          <span>Show Subpresets</span>
+          <input type="checkbox" id="toggle-subpresets" checked>
+        </div>
+        <div class="config-row">
+          <span>Highlight Mode Buttons</span>
+          <input type="checkbox" id="toggle-highlight-mode-buttons" checked>
+        </div>
+        <div class="config-row">
+          <span>Show All Sliders (Stacked)</span>
+          <input type="checkbox" id="toggle-all-sliders">
+        </div>
+        <div class="config-row">
+          <span>Enable Brightness Mode</span>
+          <input type="checkbox" id="toggle-mode-brightness" checked>
+        </div>
+        <div class="config-row">
+          <span>Enable Temp Mode</span>
+          <input type="checkbox" id="toggle-mode-temp" checked>
+        </div>
+        <div class="config-row">
+          <span>Enable Color Mode</span>
+          <input type="checkbox" id="toggle-mode-color" checked>
+        </div>
+        <div class="config-row">
+          <span>Show Light Selection Bar</span>
+          <input type="checkbox" id="toggle-light-selection">
+        </div>
+        <div class="config-row">
+          <span>Overlay on Image / Floorplan</span>
+          <input type="checkbox" id="toggle-floorplan-image">
+        </div>
+        <div class="config-row">
+          <span>Vibrate on Drag Select (Mobile)</span>
+          <input type="checkbox" id="toggle-vibrate">
+        </div>
+        <div class="config-row">
+          <span>Light Label Mode</span>
+          <select id="select-light-label-mode" style="padding: 4px 8px; border-radius: 6px; background: #27272a; color: #fff; border: 1px solid #3f3f46; outline: none; cursor: pointer;">
+            <option value="always">Always</option>
+            <option value="hover">Hover</option>
+            <option value="selected">Selected</option>
+            <option value="never">Never</option>
+          </select>
+        </div>
+        <div class="config-row">
+          <span>Re-order Lights (Test)</span>
+          <button id="btn-reorder-lights" style="padding: 4px 10px; border-radius: 6px; background: #f59e0b; color: #18181b; border: none; font-weight: 600; cursor: pointer; font-size: 12px;">
+            ⇄ Reverse Order
+          </button>
+        </div>
+        <div class="config-row">
+          <span>Custom Header Toggle (Both Lamps)</span>
+          <input type="checkbox" id="toggle-custom-header-toggle">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const mockHass = {
+      states: {
+        "light.main_bedroom": {
+          entity_id: "light.main_bedroom",
+          state: "on",
+          attributes: {
+            friendly_name: "Main Bedroom",
+            brightness: 153,
+            color_temp_kelvin: 2700,
+            rgb_color: [255, 166, 87],
+            min_color_temp_kelvin: 2000,
+            max_color_temp_kelvin: 6500,
+            supported_color_modes: ["color_temp", "hs", "rgb"]
+          },
+          last_changed: new Date().toISOString(),
+          last_updated: new Date().toISOString()
+        },
+        "light.bedroom_orb": {
+          entity_id: "light.bedroom_orb",
+          state: "on",
+          attributes: {
+            friendly_name: "Orb",
+            icon: "mdi:lightbulb",
+            brightness: 220,
+            color_temp_kelvin: 2700,
+            rgb_color: [254, 209, 102],
+            min_color_temp_kelvin: 2000,
+            max_color_temp_kelvin: 6500,
+            supported_color_modes: ["color_temp", "hs", "rgb"]
+          },
+          last_changed: new Date().toISOString(),
+          last_updated: new Date().toISOString()
+        },
+        "light.bedroom_lamp_left": {
+          entity_id: "light.bedroom_lamp_left",
+          state: "on",
+          attributes: {
+            friendly_name: "Lamp Left",
+            icon: "mdi:lamp",
+            brightness: 140,
+            color_temp_kelvin: 2500,
+            rgb_color: [255, 160, 64],
+            min_color_temp_kelvin: 2000,
+            max_color_temp_kelvin: 6500,
+            supported_color_modes: ["color_temp", "hs", "rgb"]
+          },
+          last_changed: new Date().toISOString(),
+          last_updated: new Date().toISOString()
+        },
+        "light.bedroom_lamp_right": {
+          entity_id: "light.bedroom_lamp_right",
+          state: "on",
+          attributes: {
+            friendly_name: "Lamp Right",
+            icon: "mdi:lamp",
+            brightness: 140,
+            color_temp_kelvin: 2500,
+            rgb_color: [255, 160, 64],
+            min_color_temp_kelvin: 2000,
+            max_color_temp_kelvin: 6500,
+            supported_color_modes: ["color_temp", "hs", "rgb"]
+          },
+          last_changed: new Date().toISOString(),
+          last_updated: new Date().toISOString()
+        },
+        "light.bedroom_ceiling": {
+          entity_id: "light.bedroom_ceiling",
+          state: "off",
+          attributes: {
+            friendly_name: "Ceiling Light",
+            icon: "mdi:ceiling-light",
+            brightness: 200,
+            color_temp_kelvin: 3200,
+            rgb_color: [255, 210, 160],
+            min_color_temp_kelvin: 2000,
+            max_color_temp_kelvin: 6500,
+            supported_color_modes: ["color_temp", "hs", "rgb"]
+          },
+          last_changed: new Date().toISOString(),
+          last_updated: new Date().toISOString()
+        },
+        "switch.adaptive_lighting_main_bedroom": {
+          entity_id: "switch.adaptive_lighting_main_bedroom",
+          state: "on",
+          attributes: {},
+          last_changed: new Date().toISOString(),
+          last_updated: new Date().toISOString()
+        }
+      },
+      callService(domain, service, data) {
+        console.log(`[HASS Service] ${domain}.${service}`, data);
+        const rawEntityId = data?.entity_id;
+        const entityIds = Array.isArray(rawEntityId) ? rawEntityId : (rawEntityId ? [rawEntityId] : []);
+
+        if (domain === "light") {
+          for (const entityId of entityIds) {
+            const light = mockHass.states[entityId];
+            if (!light) continue;
+
+            if (service === "toggle") {
+              light.state = light.state === "on" ? "off" : "on";
+            } else if (service === "turn_on") {
+              light.state = "on";
+              if (data.brightness_pct !== undefined) {
+                light.attributes.brightness = Math.round((data.brightness_pct / 100) * 255);
+              }
+              if (data.color_temp_kelvin !== undefined) {
+                light.attributes.color_temp_kelvin = data.color_temp_kelvin;
+              }
+              if (data.rgb_color !== undefined) {
+                light.attributes.rgb_color = data.rgb_color;
+              }
+            } else if (service === "turn_off") {
+              light.state = "off";
+            }
+          }
+
+          // Also keep the main bedroom light in sync if any child lights are updated
+          const childLights = [
+            mockHass.states["light.bedroom_lamp_left"],
+            mockHass.states["light.bedroom_lamp_right"],
+            mockHass.states["light.bedroom_ceiling"]
+          ];
+          const anyChildOn = childLights.some(l => l?.state === "on");
+          if (entityIds.some(id => id !== "light.main_bedroom")) {
+            mockHass.states["light.main_bedroom"].state = anyChildOn ? "on" : "off";
+          }
+        } else if (domain === "switch") {
+          for (const entityId of entityIds) {
+            const sw = mockHass.states[entityId];
+            if (sw && service === "toggle") {
+              sw.state = sw.state === "on" ? "off" : "on";
+            }
+          }
+        }
+
+        update();
+      }
+    };
+
+    const basePresets = [
+      { name: "Default", icon: "mdi:palette", brightness: 60, kelvin: 2700, rgb: [255, 166, 87] },
+      { name: "Relax", icon: "mdi:weather-sunset", brightness: 35, kelvin: 2200, rgb: [255, 146, 39] },
+      { name: "Read", icon: "mdi:book-open", brightness: 80, kelvin: 4000, rgb: [255, 205, 166] },
+      { name: "Night", icon: "mdi:weather-night", brightness: 5, kelvin: 2000, rgb: [255, 137, 14] }
+    ];
+
+    const extendedPresets = [
+      ...basePresets,
+      { name: "Morning", icon: "mdi:weather-sunny", brightness: 90, kelvin: 5000, rgb: [255, 228, 206] },
+      { name: "Focus", icon: "mdi:laptop", brightness: 100, kelvin: 5500, rgb: [255, 235, 222] },
+      { name: "Cozy", icon: "mdi:fire", brightness: 45, kelvin: 2400, rgb: [255, 153, 58] },
+      { name: "Dim", icon: "mdi:brightness-4", brightness: 20, kelvin: 2200, rgb: [255, 146, 39] },
+      { name: "Daylight", icon: "mdi:white-balance-sunny", brightness: 100, kelvin: 6500, rgb: [255, 254, 250] },
+      { name: "Candle", icon: "mdi:candle", brightness: 15, kelvin: 1900, rgb: [255, 131, 0] },
+      { name: "Late Night", icon: "mdi:bed-clock", brightness: 1, kelvin: 2000, rgb: [255, 137, 14] }
+    ];
+
+    let currentCardConfig = {
+      type: "custom:ha-light-card",
+      entity: "light.main_bedroom",
+      name: "Main Bedroom",
+      icon: "mdi:bed",
+      show_adaptive_lighting: true,
+      show_all_mode_buttons: false,
+      show_presets: true,
+      preset_max_rows: 3,
+      min_brightness: 0,
+      max_brightness: 100,
+      presets: basePresets
+    };
+
+    window.customElements.whenDefined("ha-light-card").then(() => {
+      const card = document.createElement("ha-light-card");
+      card.setConfig(currentCardConfig);
+      card.hass = {
+        ...mockHass,
+        states: JSON.parse(JSON.stringify(mockHass.states))
+      };
+      document.getElementById("card-wrapper").appendChild(card);
+      update();
+    });
+
+    function update() {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        card.hass = {
+          ...mockHass,
+          states: JSON.parse(JSON.stringify(mockHass.states))
+        };
+      }
+
+      const light = mockHass.states["light.main_bedroom"];
+      const adapt = mockHass.states["switch.adaptive_lighting_main_bedroom"];
+      const debugPower = document.getElementById("debug-power");
+      const debugAdaptive = document.getElementById("debug-adaptive");
+
+      if (debugPower) {
+        debugPower.textContent = light.state;
+        debugPower.style.color = light.state === "on" ? "#f59e0b" : "#9ca3af";
+      }
+      if (debugAdaptive) {
+        debugAdaptive.textContent = adapt.state;
+        debugAdaptive.style.color = adapt.state === "on" ? "#f59e0b" : "#9ca3af";
+      }
+      const debugBrightness = document.getElementById("debug-brightness");
+      if (debugBrightness) {
+        debugBrightness.textContent = Math.round((light.attributes.brightness / 255) * 100) + "%";
+      }
+      const debugKelvin = document.getElementById("debug-kelvin");
+      if (debugKelvin) {
+        debugKelvin.textContent = light.attributes.color_temp_kelvin ? light.attributes.color_temp_kelvin + " K" : "None";
+      }
+      const debugRgb = document.getElementById("debug-rgb");
+      if (debugRgb) {
+        debugRgb.textContent = light.attributes.rgb_color ? light.attributes.rgb_color.join(", ") : "None";
+      }
+
+      const lampLeft = mockHass.states["light.bedroom_lamp_left"];
+      const lampRight = mockHass.states["light.bedroom_lamp_right"];
+      const ceiling = mockHass.states["light.bedroom_ceiling"];
+
+      const debugLampLeft = document.getElementById("debug-lamp-left");
+      if (debugLampLeft && lampLeft) {
+        debugLampLeft.textContent = `${lampLeft.state} (${Math.round((lampLeft.attributes.brightness / 255) * 100)}%)`;
+        debugLampLeft.style.color = lampLeft.state === "on" ? "#f59e0b" : "#9ca3af";
+      }
+      const debugLampRight = document.getElementById("debug-lamp-right");
+      if (debugLampRight && lampRight) {
+        debugLampRight.textContent = `${lampRight.state} (${Math.round((lampRight.attributes.brightness / 255) * 100)}%)`;
+        debugLampRight.style.color = lampRight.state === "on" ? "#f59e0b" : "#9ca3af";
+      }
+      const debugCeiling = document.getElementById("debug-ceiling");
+      if (debugCeiling && ceiling) {
+        debugCeiling.textContent = `${ceiling.state} (${Math.round((ceiling.attributes.brightness / 255) * 100)}%)`;
+        debugCeiling.style.color = ceiling.state === "on" ? "#f59e0b" : "#9ca3af";
+      }
+    }
+
+    document.getElementById("toggle-show-subtitle")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          show_subtitle: e.target.checked
+        };
+        card.setConfig(currentCardConfig);
+      }
+    });
+
+    document.getElementById("toggle-editable-subtitle")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          editable_subtitle: e.target.checked
+        };
+        card.setConfig(currentCardConfig);
+      }
+    });
+
+    document.getElementById("toggle-all-buttons")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          show_all_mode_buttons: e.target.checked
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("select-color-format")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          color_format: e.target.value
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("input-max-rows")?.addEventListener("input", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          preset_max_rows: Math.max(1, parseInt(e.target.value, 10) || 3)
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("toggle-show-presets")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          show_presets: e.target.checked
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("toggle-many-presets")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          presets: e.target.checked ? extendedPresets : basePresets
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("toggle-subpresets")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          show_subpresets: e.target.checked
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("toggle-highlight-mode-buttons")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          highlight_mode_buttons: e.target.checked
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("toggle-all-sliders")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          show_all_sliders: e.target.checked
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("toggle-mode-brightness")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          show_brightness: e.target.checked
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("toggle-mode-temp")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          show_temperature: e.target.checked
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("toggle-mode-color")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          show_color: e.target.checked
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    let sampleLightEntities = [
+      { entity: "light.bedroom_orb", name: "Orb", icon: "mdi:lightbulb", x: 20, y: 35 },
+      { entity: "light.bedroom_lamp_left", name: "Lamp Left", icon: "mdi:lamp", x: 38, y: 65 },
+      { entity: "light.bedroom_lamp_right", name: "Lamp Right", icon: "mdi:lamp", x: 62, y: 65 },
+      { entity: "light.bedroom_ceiling", name: "Ceiling", icon: "mdi:ceiling-light", x: 80, y: 35 }
+    ];
+
+    const sampleFloorplanSvg = "data:image/svg+xml;utf8," + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400">
+        <defs>
+          <radialGradient id="bg" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stop-color="#242429"/>
+            <stop offset="100%" stop-color="#151518"/>
+          </radialGradient>
+          <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.06)" />
+          </pattern>
+        </defs>
+        <rect width="800" height="400" fill="url(#bg)"/>
+        <rect width="800" height="400" fill="url(#grid)"/>
+        <rect x="40" y="30" width="720" height="340" rx="12" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="4"/>
+        <rect x="310" y="160" width="180" height="200" rx="8" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+        <rect x="330" y="175" width="60" height="36" rx="4" fill="rgba(255,255,255,0.08)"/>
+        <rect x="410" y="175" width="60" height="36" rx="4" fill="rgba(255,255,255,0.08)"/>
+        <line x1="310" y1="230" x2="490" y2="230" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
+        <rect x="235" y="220" width="55" height="55" rx="6" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
+        <rect x="510" y="220" width="55" height="55" rx="6" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
+        <rect x="80" y="60" width="140" height="55" rx="4" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
+        <rect x="580" y="60" width="140" height="55" rx="4" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
+        <path d="M 690 370 A 50 50 0 0 0 740 320" fill="none" stroke="rgba(245,158,11,0.4)" stroke-width="1.5" stroke-dasharray="3,3"/>
+        <line x1="690" y1="370" x2="690" y2="320" stroke="rgba(245,158,11,0.6)" stroke-width="2"/>
+        <text x="400" y="80" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-family="sans-serif" font-size="14" font-weight="600" letter-spacing="2">BEDROOM FLOORPLAN</text>
+      </svg>
+    `);
+
+    document.getElementById("toggle-light-selection")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          show_light_selection: e.target.checked,
+          entities: e.target.checked ? [...sampleLightEntities] : undefined
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("toggle-floorplan-image")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          light_selection_image: e.target.checked ? sampleFloorplanSvg : undefined
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("toggle-vibrate")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          vibrate: e.target.checked
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("select-light-label-mode")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          light_label_mode: e.target.value
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("btn-reorder-lights")?.addEventListener("click", () => {
+      const card = document.querySelector("ha-light-card");
+      if (card && currentCardConfig.entities) {
+        sampleLightEntities = [...sampleLightEntities].reverse();
+        currentCardConfig = {
+          ...currentCardConfig,
+          entities: [...sampleLightEntities]
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+
+    document.getElementById("toggle-custom-header-toggle")?.addEventListener("change", (e) => {
+      const card = document.querySelector("ha-light-card");
+      if (card) {
+        currentCardConfig = {
+          ...currentCardConfig,
+          custom_toggles: e.target.checked
+            ? [
+                {
+                  icon: "mdi:lamps",
+                  name: "Toggle Both Lamps",
+                  entities: ["light.bedroom_lamp_left", "light.bedroom_lamp_right"]
+                }
+              ]
+            : undefined
+        };
+        card.setConfig(currentCardConfig);
+        update();
+      }
+    });
+  </script>
+</body>
+</html>
