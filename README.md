@@ -26,7 +26,7 @@ This is almost 100% AI-written, human-tested code.
     - `hover`: Show label on hover under each light orb.
     - `selected`: Show name only when selected, hiding unselected labels.
     - `never`: Compact icon-only orbs for all lights.
-  - **Interactive Re-ordering**: Re-order lights anytime in the visual card editor using the ▲ and ▼ buttons, or customize the YAML `entities:` array order.
+  - **Interactive Re-ordering**: Drag the ⋮⋮ handle on lights or presets anytime in the visual card editor to re-order them, or customize the YAML array order.
   - Per-light custom `name`, `icon`, and `show_label` overrides.
 - **Minimalist Pill Design**: Rounded corners, warm amber glowing active states, and balanced geometry.
 - **Top-Left Dual-Line Header**:

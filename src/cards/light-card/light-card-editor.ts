@@ -78,6 +78,25 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
   @state()
   private _newColorSubpreset = "#FF9500";
 
+  @state()
+  private _dragReorderList: "lights" | "presets" | null = null;
+
+  @state()
+  private _dragReorderIndex: number | null = null;
+
+  @state()
+  private _dragOverIndex: number | null = null;
+
+  private _onReorderMoveBound = (e: PointerEvent) => this._onReorderMove(e);
+  private _onReorderUpBound = (e: PointerEvent) => this._onReorderUp(e);
+
+  public override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener("pointermove", this._onReorderMoveBound);
+    window.removeEventListener("pointerup", this._onReorderUpBound);
+    window.removeEventListener("pointercancel", this._onReorderUpBound);
+  }
+
   public setConfig(config: LightCardConfig): void {
     this._config = config;
   }
@@ -213,14 +232,105 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     this.requestUpdate();
   }
 
-  private _moveEntity(index: number, direction: -1 | 1): void {
-    const list = [...this._getEffectiveSelectionEntities()];
-    const targetIdx = index + direction;
-    if (targetIdx < 0 || targetIdx >= list.length) return;
-    const temp = list[index];
-    list[index] = list[targetIdx];
-    list[targetIdx] = temp;
-    this._commitSelectionEntities(list);
+  private _startReorderDrag(listName: "lights" | "presets", index: number, e: PointerEvent): void {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    this._dragReorderList = listName;
+    this._dragReorderIndex = index;
+    this._dragOverIndex = index;
+
+    window.removeEventListener("pointermove", this._onReorderMoveBound);
+    window.removeEventListener("pointerup", this._onReorderUpBound);
+    window.removeEventListener("pointercancel", this._onReorderUpBound);
+
+    window.addEventListener("pointermove", this._onReorderMoveBound);
+    window.addEventListener("pointerup", this._onReorderUpBound);
+    window.addEventListener("pointercancel", this._onReorderUpBound);
+  }
+
+  private _onReorderMove(e: PointerEvent): void {
+    if (!this._dragReorderList || this._dragReorderIndex === null) return;
+    e.preventDefault();
+
+    const container = this.shadowRoot?.querySelector<HTMLElement>(
+      `[data-reorder-list="${this._dragReorderList}"]`
+    );
+    if (!container) return;
+
+    const rows = Array.from(container.querySelectorAll<HTMLElement>("[data-reorder-idx]"));
+    if (rows.length === 0) return;
+
+    const fromIdx = this._dragReorderIndex;
+    let targetIdx = fromIdx;
+
+    rows.forEach((row) => {
+      const rIdx = Number(row.getAttribute("data-reorder-idx"));
+      if (isNaN(rIdx) || rIdx === fromIdx) return;
+      const rect = row.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (fromIdx < rIdx && e.clientY > midY) {
+        targetIdx = Math.max(targetIdx, rIdx);
+      } else if (fromIdx > rIdx && e.clientY < midY) {
+        targetIdx = Math.min(targetIdx, rIdx);
+      }
+    });
+
+    if (targetIdx !== this._dragOverIndex) {
+      this._dragOverIndex = targetIdx;
+    }
+  }
+
+  private _onReorderUp(_e: PointerEvent): void {
+    window.removeEventListener("pointermove", this._onReorderMoveBound);
+    window.removeEventListener("pointerup", this._onReorderUpBound);
+    window.removeEventListener("pointercancel", this._onReorderUpBound);
+
+    const listName = this._dragReorderList;
+    const fromIdx = this._dragReorderIndex;
+    const toIdx = this._dragOverIndex;
+
+    this._dragReorderList = null;
+    this._dragReorderIndex = null;
+    this._dragOverIndex = null;
+
+    if (listName && fromIdx !== null && toIdx !== null && fromIdx !== toIdx) {
+      if (listName === "lights") {
+        const list = [...this._getEffectiveSelectionEntities()];
+        if (fromIdx >= 0 && fromIdx < list.length && toIdx >= 0 && toIdx < list.length) {
+          const [moved] = list.splice(fromIdx, 1);
+          list.splice(toIdx, 0, moved);
+          this._commitSelectionEntities(list);
+        }
+      } else if (listName === "presets") {
+        const list = this._getEffectivePresets().map((p) => ({ ...p }));
+        if (fromIdx >= 0 && fromIdx < list.length && toIdx >= 0 && toIdx < list.length) {
+          const [moved] = list.splice(fromIdx, 1);
+          list.splice(toIdx, 0, moved);
+          this._commitPresets(list);
+        }
+      }
+    }
+  }
+
+  private _renderDragHandle(listName: "lights" | "presets", index: number) {
+    return html`
+      <div
+        class="drag-handle"
+        @pointerdown=${(e: PointerEvent) => this._startReorderDrag(listName, index, e)}
+        title="Drag to reorder"
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <circle cx="5.5" cy="3.5" r="1.3"></circle>
+          <circle cx="10.5" cy="3.5" r="1.3"></circle>
+          <circle cx="5.5" cy="8" r="1.3"></circle>
+          <circle cx="10.5" cy="8" r="1.3"></circle>
+          <circle cx="5.5" cy="12.5" r="1.3"></circle>
+          <circle cx="10.5" cy="12.5" r="1.3"></circle>
+        </svg>
+      </div>
+    `;
   }
 
   private _updateEntityField(index: number, field: "name" | "icon", rawValue: string): void {
@@ -417,16 +527,6 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     this._config = newConfig;
     fireEvent(this, "config-changed", { config: this._config });
     this.requestUpdate();
-  }
-
-  private _movePreset(index: number, direction: -1 | 1): void {
-    const list = this._getEffectivePresets().map((p) => ({ ...p }));
-    const targetIdx = index + direction;
-    if (targetIdx < 0 || targetIdx >= list.length) return;
-    const temp = list[index];
-    list[index] = list[targetIdx];
-    list[targetIdx] = temp;
-    this._commitPresets(list);
   }
 
   private _removePreset(index: number): void {
@@ -1355,6 +1455,68 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
       color: #ffffff;
       outline: none;
     }
+
+    .drag-handle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 28px;
+      border-radius: 6px;
+      color: #9ca3af;
+      cursor: grab;
+      flex-shrink: 0;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: color 0.15s ease, background 0.15s ease;
+    }
+
+    .drag-handle:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+      color: #f59e0b;
+    }
+
+    .entity-item-row {
+      position: relative;
+    }
+
+    .entity-item-row.is-dragging-row {
+      opacity: 0.55;
+      border-color: rgba(245, 158, 11, 0.7);
+      background: rgba(245, 158, 11, 0.08);
+    }
+
+    .entity-item-row.drop-before::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: -5px;
+      height: 3px;
+      border-radius: 2px;
+      background: #f59e0b;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+      pointer-events: none;
+    }
+
+    .entity-item-row.drop-after::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -5px;
+      height: 3px;
+      border-radius: 2px;
+      background: #f59e0b;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+      pointer-events: none;
+    }
   `;
 
   private _renderMainEntityPicker() {
@@ -1659,17 +1821,31 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
               `}
         </div>
 
-        <div class="entity-list">
+        <div class="entity-list" data-reorder-list="presets">
           ${presets.length > 0
             ? presets.map((preset, idx) => {
                 const rgb = resolvePresetRgb(preset);
                 const hexColor = rgb ? rgbToHex(rgb.r, rgb.g, rgb.b) : "";
-                const isFirst = idx === 0;
-                const isLast = idx === presets.length - 1;
+                const isDraggingThis =
+                  this._dragReorderList === "presets" && this._dragReorderIndex === idx;
+                const isDropTarget =
+                  this._dragReorderList === "presets" &&
+                  this._dragReorderIndex !== null &&
+                  this._dragOverIndex === idx &&
+                  this._dragReorderIndex !== idx;
+                const dropClass = isDropTarget
+                  ? this._dragReorderIndex! < idx
+                    ? "drop-after"
+                    : "drop-before"
+                  : "";
 
                 return html`
-                  <div class="entity-item-row light-edit-row">
+                  <div
+                    class="entity-item-row light-edit-row ${isDraggingThis ? "is-dragging-row" : ""} ${dropClass}"
+                    data-reorder-idx=${idx}
+                  >
                     <div class="entity-row-top">
+                      ${this._renderDragHandle("presets", idx)}
                       <input
                         type="text"
                         class="entity-label-input"
@@ -1689,24 +1865,6 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                         title="MDI icon (e.g. mdi:weather-sunset)"
                       />
                       <div class="entity-item-actions">
-                        <button
-                          type="button"
-                          class="icon-btn"
-                          ?disabled=${isFirst}
-                          @click=${() => this._movePreset(idx, -1)}
-                          title="Move preset up"
-                        >
-                          ▲
-                        </button>
-                        <button
-                          type="button"
-                          class="icon-btn"
-                          ?disabled=${isLast}
-                          @click=${() => this._movePreset(idx, 1)}
-                          title="Move preset down"
-                        >
-                          ▼
-                        </button>
                         <button
                           type="button"
                           class="icon-btn delete-btn"
@@ -2529,10 +2687,10 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                 `}
           </div>
           <div style="font-size: 11px; color: var(--secondary-text-color, #9ca3af); margin-bottom: 4px;">
-            Edit labels directly, set optional icons & X%/Y% image positions, or remove/reorder lights.
+            Drag the ⋮⋮ handle to reorder lights, edit labels directly, or set optional icons & X%/Y% positions.
           </div>
 
-          <div class="entity-list">
+          <div class="entity-list" data-reorder-list="lights">
             ${(() => {
               const effectiveList = this._getEffectiveSelectionEntities();
               const addMatches = this._getFilteredHassEntities(this._addLightSearch).slice(0, 60);
@@ -2556,12 +2714,26 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                         stateObj?.attributes?.friendly_name ||
                         entityId.replace(/^[^.]+\./, "").replace(/_/g, " ");
                       const fallbackIcon = stateObj?.attributes?.icon || "mdi:lightbulb";
-                      const isFirst = idx === 0;
-                      const isLast = idx === effectiveList.length - 1;
+                      const isDraggingThis =
+                        this._dragReorderList === "lights" && this._dragReorderIndex === idx;
+                      const isDropTarget =
+                        this._dragReorderList === "lights" &&
+                        this._dragReorderIndex !== null &&
+                        this._dragOverIndex === idx &&
+                        this._dragReorderIndex !== idx;
+                      const dropClass = isDropTarget
+                        ? this._dragReorderIndex! < idx
+                          ? "drop-after"
+                          : "drop-before"
+                        : "";
 
                       return html`
-                        <div class="entity-item-row light-edit-row">
+                        <div
+                          class="entity-item-row light-edit-row ${isDraggingThis ? "is-dragging-row" : ""} ${dropClass}"
+                          data-reorder-idx=${idx}
+                        >
                           <div class="entity-row-top">
+                            ${this._renderDragHandle("lights", idx)}
                             <input
                               type="text"
                               class="entity-label-input"
@@ -2581,24 +2753,6 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                               title="Optional MDI icon (e.g. mdi:lamp)"
                             />
                             <div class="entity-item-actions">
-                              <button
-                                type="button"
-                                class="icon-btn"
-                                ?disabled=${isFirst}
-                                @click=${() => this._moveEntity(idx, -1)}
-                                title="Move light earlier (Up)"
-                              >
-                                ▲
-                              </button>
-                              <button
-                                type="button"
-                                class="icon-btn"
-                                ?disabled=${isLast}
-                                @click=${() => this._moveEntity(idx, 1)}
-                                title="Move light later (Down)"
-                              >
-                                ▼
-                              </button>
                               <button
                                 type="button"
                                 class="icon-btn delete-btn"
