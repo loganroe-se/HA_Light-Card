@@ -2,16 +2,22 @@ import { LitElement, html, css } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { HomeAssistant, LovelaceCardEditor } from "../../ha/types";
 import { fireEvent } from "../../ha/fire-event";
-import { ICONS, renderIcon } from "../../utils/icons";
 import {
   LightCardConfig,
   CustomToggleConfig,
   LightEntityConfig,
+  PresetConfig,
+  BrightnessSubpreset,
+  TemperatureSubpreset,
+  ColorSubpreset,
+  DEFAULT_PRESETS,
+  DEFAULT_BRIGHTNESS_SUBPRESETS,
+  DEFAULT_TEMPERATURE_SUBPRESETS,
+  DEFAULT_COLOR_SUBPRESETS,
   getMainEntityIds,
-  resolveDefaultSelectionEntities,
-  resolveImageCanvasHeight,
-  resolveImageObjectFit
+  resolveDefaultSelectionEntities
 } from "./light-card-config";
+import { rgbToHex, parseColorInput, resolvePresetRgb } from "../../utils/colors";
 
 const SUPPORTED_IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -64,21 +70,13 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
   private _newToggleName = "";
 
   @state()
-  private _dragEntityIdx: number | null = null;
+  private _newBrightnessSubpreset = "";
 
   @state()
-  private _dragEntityCoords: { x: number; y: number } | null = null;
+  private _newTempSubpreset = "";
 
-  private _dragGrabOffset = { dx: 0, dy: 0 };
-  private _onEditorDragMoveBound = (e: PointerEvent) => this._onEditorOrbDragMove(e);
-  private _onEditorDragEndBound = (e: PointerEvent) => this._onEditorOrbDragEnd(e);
-
-  public override disconnectedCallback(): void {
-    super.disconnectedCallback();
-    window.removeEventListener("pointermove", this._onEditorDragMoveBound);
-    window.removeEventListener("pointerup", this._onEditorDragEndBound);
-    window.removeEventListener("pointercancel", this._onEditorDragEndBound);
-  }
+  @state()
+  private _newColorSubpreset = "#FF9500";
 
   public setConfig(config: LightCardConfig): void {
     this._config = config;
@@ -279,96 +277,6 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     this._commitSelectionEntities(list);
   }
 
-  private _setEntityCoords(index: number, x: number, y: number): void {
-    const list = [...this._getEffectiveSelectionEntities()];
-    const current = list[index];
-    if (current === undefined) return;
-
-    const clampedX = Math.round(Math.max(0, Math.min(100, x)));
-    const clampedY = Math.round(Math.max(0, Math.min(100, y)));
-
-    if (typeof current === "string") {
-      list[index] = {
-        entity: current,
-        x: clampedX,
-        y: clampedY
-      };
-    } else {
-      list[index] = {
-        ...current,
-        x: clampedX,
-        y: clampedY
-      };
-    }
-    this._commitSelectionEntities(list);
-  }
-
-  private _onEditorOrbDragStart(index: number, curX: number, curY: number, e: PointerEvent): void {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    const stage = this.shadowRoot?.querySelector<HTMLElement>(".editor-image-stage");
-    if (!stage) return;
-
-    const rect = stage.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
-
-    const centerPxX = rect.left + (curX / 100) * rect.width;
-    const centerPxY = rect.top + (curY / 100) * rect.height;
-    this._dragGrabOffset = {
-      dx: e.clientX - centerPxX,
-      dy: e.clientY - centerPxY
-    };
-
-    this._dragEntityIdx = index;
-    this._dragEntityCoords = { x: curX, y: curY };
-
-    window.removeEventListener("pointermove", this._onEditorDragMoveBound);
-    window.removeEventListener("pointerup", this._onEditorDragEndBound);
-    window.removeEventListener("pointercancel", this._onEditorDragEndBound);
-
-    window.addEventListener("pointermove", this._onEditorDragMoveBound);
-    window.addEventListener("pointerup", this._onEditorDragEndBound);
-    window.addEventListener("pointercancel", this._onEditorDragEndBound);
-  }
-
-  private _onEditorOrbDragMove(e: PointerEvent): void {
-    if (this._dragEntityIdx === null) return;
-    e.preventDefault();
-
-    const stage = this.shadowRoot?.querySelector<HTMLElement>(".editor-image-stage");
-    if (!stage) return;
-
-    const rect = stage.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
-
-    const centerPxX = e.clientX - this._dragGrabOffset.dx;
-    const centerPxY = e.clientY - this._dragGrabOffset.dy;
-
-    const x = Math.round(Math.max(0, Math.min(100, ((centerPxX - rect.left) / rect.width) * 100)));
-    const y = Math.round(Math.max(0, Math.min(100, ((centerPxY - rect.top) / rect.height) * 100)));
-
-    this._dragEntityCoords = { x, y };
-  }
-
-  private _onEditorOrbDragEnd(_e: PointerEvent): void {
-    window.removeEventListener("pointermove", this._onEditorDragMoveBound);
-    window.removeEventListener("pointerup", this._onEditorDragEndBound);
-    window.removeEventListener("pointercancel", this._onEditorDragEndBound);
-
-    if (this._dragEntityIdx !== null && this._dragEntityCoords) {
-      const idx = this._dragEntityIdx;
-      const { x, y } = this._dragEntityCoords;
-      this._dragEntityIdx = null;
-      this._dragEntityCoords = null;
-      this._setEntityCoords(idx, x, y);
-    } else {
-      this._dragEntityIdx = null;
-      this._dragEntityCoords = null;
-    }
-  }
-
   private _removeEntity(index: number): void {
     const list = this._getEffectiveSelectionEntities().filter((_, i) => i !== index);
     this._commitSelectionEntities(list);
@@ -480,6 +388,345 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     };
     fireEvent(this, "config-changed", { config: this._config });
     this.requestUpdate();
+  }
+
+  /* ---- Main Presets CRUD ---- */
+
+  private _getEffectivePresets(): PresetConfig[] {
+    if (!this._config) return [];
+    if (Array.isArray(this._config.presets)) {
+      return this._config.presets;
+    }
+    return DEFAULT_PRESETS.map((p) => ({ ...p }));
+  }
+
+  private _commitPresets(list: PresetConfig[]): void {
+    if (!this._config) return;
+    this._config = {
+      ...this._config,
+      presets: list
+    };
+    fireEvent(this, "config-changed", { config: this._config });
+    this.requestUpdate();
+  }
+
+  private _resetPresetsToDefault(): void {
+    if (!this._config) return;
+    const newConfig = { ...this._config };
+    delete newConfig.presets;
+    this._config = newConfig;
+    fireEvent(this, "config-changed", { config: this._config });
+    this.requestUpdate();
+  }
+
+  private _movePreset(index: number, direction: -1 | 1): void {
+    const list = this._getEffectivePresets().map((p) => ({ ...p }));
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= list.length) return;
+    const temp = list[index];
+    list[index] = list[targetIdx];
+    list[targetIdx] = temp;
+    this._commitPresets(list);
+  }
+
+  private _removePreset(index: number): void {
+    const list = this._getEffectivePresets().filter((_, i) => i !== index);
+    this._commitPresets(list);
+  }
+
+  private _addPreset(): void {
+    const list = this._getEffectivePresets().map((p) => ({ ...p }));
+    list.push({
+      name: `Preset ${list.length + 1}`,
+      icon: "mdi:lightbulb",
+      brightness: 75,
+      kelvin: 3000
+    });
+    this._commitPresets(list);
+  }
+
+  private _updatePresetField(
+    index: number,
+    field: "name" | "icon" | "brightness" | "kelvin" | "scene",
+    rawValue: string
+  ): void {
+    const list = this._getEffectivePresets().map((p) => ({ ...p }));
+    const item = list[index];
+    if (!item) return;
+
+    if (field === "brightness" || field === "kelvin") {
+      const trimmed = rawValue.trim();
+      if (trimmed === "") {
+        delete item[field];
+      } else {
+        const num = Number(trimmed);
+        if (!isNaN(num)) {
+          item[field] = field === "brightness" ? Math.max(0, Math.min(100, num)) : Math.max(1000, Math.min(10000, num));
+        }
+      }
+    } else if (field === "name") {
+      item.name = rawValue;
+    } else {
+      if (rawValue.trim() === "") {
+        delete item[field];
+      } else {
+        item[field] = rawValue.trim();
+      }
+    }
+    this._commitPresets(list);
+  }
+
+  private _updatePresetRgb(index: number, hexColor: string): void {
+    const parsed = parseColorInput(hexColor);
+    if (!parsed) return;
+    const list = this._getEffectivePresets().map((p) => ({ ...p }));
+    const item = list[index];
+    if (!item) return;
+    item.rgb = [parsed.r, parsed.g, parsed.b];
+    delete item.rgb_color;
+    delete item.color;
+    this._commitPresets(list);
+  }
+
+  private _clearPresetRgb(index: number): void {
+    const list = this._getEffectivePresets().map((p) => ({ ...p }));
+    const item = list[index];
+    if (!item) return;
+    delete item.rgb;
+    delete item.rgb_color;
+    delete item.color;
+    this._commitPresets(list);
+  }
+
+  /* ---- Subpresets CRUD ---- */
+
+  private _hasCustomBrightnessSubpresets(): boolean {
+    return Boolean(this._config && (this._config.brightness_presets !== undefined || this._config.subpresets?.brightness !== undefined));
+  }
+
+  private _getEffectiveBrightnessSubpresets(): { value: number; label?: string }[] {
+    const raw =
+      this._config?.brightness_presets ??
+      this._config?.subpresets?.brightness ??
+      DEFAULT_BRIGHTNESS_SUBPRESETS;
+    return raw.map((item) =>
+      typeof item === "number" ? { value: item } : { value: item.value, label: item.label }
+    );
+  }
+
+  private _commitBrightnessSubpresets(items: { value: number; label?: string }[]): void {
+    if (!this._config) return;
+    const serialized: (number | BrightnessSubpreset)[] = items.map((it) =>
+      it.label && it.label.trim() !== "" && it.label.trim() !== `${it.value}%`
+        ? { value: it.value, label: it.label.trim() }
+        : it.value
+    );
+    const nextConfig: LightCardConfig = {
+      ...this._config,
+      brightness_presets: serialized
+    };
+    if (nextConfig.subpresets?.brightness) {
+      const sub = { ...nextConfig.subpresets };
+      delete sub.brightness;
+      nextConfig.subpresets = sub;
+    }
+    this._config = nextConfig;
+    fireEvent(this, "config-changed", { config: this._config });
+    this.requestUpdate();
+  }
+
+  private _resetBrightnessSubpresets(): void {
+    if (!this._config) return;
+    const nextConfig = { ...this._config };
+    delete nextConfig.brightness_presets;
+    if (nextConfig.subpresets?.brightness) {
+      const sub = { ...nextConfig.subpresets };
+      delete sub.brightness;
+      nextConfig.subpresets = Object.keys(sub).length > 0 ? sub : undefined;
+    }
+    this._config = nextConfig;
+    fireEvent(this, "config-changed", { config: this._config });
+    this.requestUpdate();
+  }
+
+  private _updateBrightnessSubpreset(index: number, value: number, label?: string): void {
+    const list = this._getEffectiveBrightnessSubpresets();
+    if (!list[index]) return;
+    list[index] = {
+      value: Math.max(0, Math.min(100, isNaN(value) ? list[index].value : value)),
+      label
+    };
+    this._commitBrightnessSubpresets(list);
+  }
+
+  private _removeBrightnessSubpreset(index: number): void {
+    const list = this._getEffectiveBrightnessSubpresets().filter((_, i) => i !== index);
+    this._commitBrightnessSubpresets(list);
+  }
+
+  private _addBrightnessSubpreset(): void {
+    const val = Number(this._newBrightnessSubpreset.trim());
+    if (this._newBrightnessSubpreset.trim() === "" || isNaN(val)) return;
+    const list = this._getEffectiveBrightnessSubpresets();
+    list.push({ value: Math.max(0, Math.min(100, Math.round(val))) });
+    this._newBrightnessSubpreset = "";
+    this._commitBrightnessSubpresets(list);
+  }
+
+  private _hasCustomTempSubpresets(): boolean {
+    return Boolean(
+      this._config &&
+        (this._config.temperature_presets !== undefined ||
+          this._config.temp_presets !== undefined ||
+          this._config.subpresets?.temperature !== undefined ||
+          this._config.subpresets?.temp !== undefined)
+    );
+  }
+
+  private _getEffectiveTempSubpresets(): { kelvin: number; label?: string }[] {
+    const raw =
+      this._config?.temperature_presets ??
+      this._config?.temp_presets ??
+      this._config?.subpresets?.temperature ??
+      this._config?.subpresets?.temp ??
+      DEFAULT_TEMPERATURE_SUBPRESETS;
+    return raw.map((item) =>
+      typeof item === "number" ? { kelvin: item } : { kelvin: item.kelvin, label: item.label }
+    );
+  }
+
+  private _commitTempSubpresets(items: { kelvin: number; label?: string }[]): void {
+    if (!this._config) return;
+    const serialized: (number | TemperatureSubpreset)[] = items.map((it) =>
+      it.label && it.label.trim() !== "" && it.label.trim() !== `${it.kelvin}K`
+        ? { kelvin: it.kelvin, label: it.label.trim() }
+        : it.kelvin
+    );
+    const nextConfig: LightCardConfig = {
+      ...this._config,
+      temperature_presets: serialized
+    };
+    delete nextConfig.temp_presets;
+    if (nextConfig.subpresets?.temperature || nextConfig.subpresets?.temp) {
+      const sub = { ...nextConfig.subpresets };
+      delete sub.temperature;
+      delete sub.temp;
+      nextConfig.subpresets = sub;
+    }
+    this._config = nextConfig;
+    fireEvent(this, "config-changed", { config: this._config });
+    this.requestUpdate();
+  }
+
+  private _resetTempSubpresets(): void {
+    if (!this._config) return;
+    const nextConfig = { ...this._config };
+    delete nextConfig.temperature_presets;
+    delete nextConfig.temp_presets;
+    if (nextConfig.subpresets?.temperature || nextConfig.subpresets?.temp) {
+      const sub = { ...nextConfig.subpresets };
+      delete sub.temperature;
+      delete sub.temp;
+      nextConfig.subpresets = Object.keys(sub).length > 0 ? sub : undefined;
+    }
+    this._config = nextConfig;
+    fireEvent(this, "config-changed", { config: this._config });
+    this.requestUpdate();
+  }
+
+  private _updateTempSubpreset(index: number, kelvin: number, label?: string): void {
+    const list = this._getEffectiveTempSubpresets();
+    if (!list[index]) return;
+    list[index] = {
+      kelvin: Math.max(1000, Math.min(10000, isNaN(kelvin) ? list[index].kelvin : kelvin)),
+      label
+    };
+    this._commitTempSubpresets(list);
+  }
+
+  private _removeTempSubpreset(index: number): void {
+    const list = this._getEffectiveTempSubpresets().filter((_, i) => i !== index);
+    this._commitTempSubpresets(list);
+  }
+
+  private _addTempSubpreset(): void {
+    const val = Number(this._newTempSubpreset.trim());
+    if (this._newTempSubpreset.trim() === "" || isNaN(val)) return;
+    const list = this._getEffectiveTempSubpresets();
+    list.push({ kelvin: Math.max(1000, Math.min(10000, Math.round(val))) });
+    this._newTempSubpreset = "";
+    this._commitTempSubpresets(list);
+  }
+
+  private _hasCustomColorSubpresets(): boolean {
+    return Boolean(
+      this._config &&
+        (this._config.color_presets !== undefined || this._config.subpresets?.color !== undefined)
+    );
+  }
+
+  private _getEffectiveColorSubpresets(): { color: string; label?: string }[] {
+    const raw =
+      this._config?.color_presets ??
+      this._config?.subpresets?.color ??
+      DEFAULT_COLOR_SUBPRESETS;
+    return raw.map((item) =>
+      typeof item === "string" ? { color: item } : { color: item.color, label: item.label }
+    );
+  }
+
+  private _commitColorSubpresets(items: { color: string; label?: string }[]): void {
+    if (!this._config) return;
+    const serialized: (string | ColorSubpreset)[] = items.map((it) =>
+      it.label && it.label.trim() !== "" && it.label.trim() !== it.color
+        ? { color: it.color, label: it.label.trim() }
+        : it.color
+    );
+    const nextConfig: LightCardConfig = {
+      ...this._config,
+      color_presets: serialized
+    };
+    if (nextConfig.subpresets?.color) {
+      const sub = { ...nextConfig.subpresets };
+      delete sub.color;
+      nextConfig.subpresets = sub;
+    }
+    this._config = nextConfig;
+    fireEvent(this, "config-changed", { config: this._config });
+    this.requestUpdate();
+  }
+
+  private _resetColorSubpresets(): void {
+    if (!this._config) return;
+    const nextConfig = { ...this._config };
+    delete nextConfig.color_presets;
+    if (nextConfig.subpresets?.color) {
+      const sub = { ...nextConfig.subpresets };
+      delete sub.color;
+      nextConfig.subpresets = Object.keys(sub).length > 0 ? sub : undefined;
+    }
+    this._config = nextConfig;
+    fireEvent(this, "config-changed", { config: this._config });
+    this.requestUpdate();
+  }
+
+  private _updateColorSubpreset(index: number, color: string, label?: string): void {
+    const list = this._getEffectiveColorSubpresets();
+    if (!list[index]) return;
+    list[index] = { color: color.toUpperCase(), label };
+    this._commitColorSubpresets(list);
+  }
+
+  private _removeColorSubpreset(index: number): void {
+    const list = this._getEffectiveColorSubpresets().filter((_, i) => i !== index);
+    this._commitColorSubpresets(list);
+  }
+
+  private _addColorSubpreset(): void {
+    const color = this._newColorSubpreset.trim() || "#FF9500";
+    const list = this._getEffectiveColorSubpresets();
+    list.push({ color: color.toUpperCase() });
+    this._commitColorSubpresets(list);
   }
 
   static override styles = css`
@@ -984,112 +1231,129 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
       margin-top: 2px;
     }
 
-    .editor-image-placer {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 4px;
-    }
-
-    .editor-placer-header {
+    .subsection-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
+      margin-top: 4px;
     }
 
-    .editor-drag-readout {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: rgba(245, 158, 11, 0.18);
-      border: 1px solid rgba(245, 158, 11, 0.45);
-      color: #fde68a;
-    }
-
-    .editor-image-stage {
-      position: relative;
+    .preset-fields-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
+      gap: 8px;
       width: 100%;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      background: #18181b;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: none;
-      line-height: 0;
     }
 
-    .editor-stage-img {
-      width: 100%;
-      height: auto;
-      display: block;
-      pointer-events: none;
-      user-select: none;
-      max-height: 360px;
-      object-fit: cover;
-    }
-
-    .editor-drag-orb {
-      position: absolute;
-      transform: translate(-50%, -19px);
+    .mini-field {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      cursor: grab;
-      z-index: 2;
-      touch-action: none;
-      user-select: none;
+      gap: 3px;
     }
 
-    .editor-drag-orb:hover {
-      z-index: 5;
-    }
-
-    .editor-drag-orb.is-dragging {
-      cursor: grabbing;
-      z-index: 10;
-    }
-
-    .editor-orb-circle {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      background: #fed166;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 0 14px rgba(254, 209, 102, 0.5);
-      border: 2px solid rgba(255, 255, 255, 0.85);
-      transition: transform 0.12s ease, box-shadow 0.12s ease;
-    }
-
-    .editor-drag-orb.is-dragging .editor-orb-circle {
-      transform: scale(1.14);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65), 0 0 22px rgba(245, 158, 11, 0.85);
-      border-color: #ffffff;
-    }
-
-    .editor-orb-circle svg,
-    .editor-orb-circle ha-icon {
-      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-    }
-
-    .editor-orb-badge {
-      padding: 2px 6px;
-      border-radius: 5px;
-      background: rgba(24, 24, 27, 0.92);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: #ffffff;
+    .mini-field span {
       font-size: 10px;
       font-weight: 600;
-      line-height: 1.2;
-      white-space: nowrap;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
-      pointer-events: none;
+      text-transform: uppercase;
+      color: var(--secondary-text-color, #9ca3af);
+      letter-spacing: 0.03em;
+    }
+
+    .mini-field input[type="number"],
+    .mini-field input[type="text"] {
+      padding: 5px 8px !important;
+      font-size: 12px !important;
+      border-radius: 6px !important;
+      background: rgba(0, 0, 0, 0.25) !important;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .preset-color-ctrl {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .color-swatch-input {
+      width: 34px;
+      height: 28px;
+      padding: 2px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: #27272a;
+      cursor: pointer;
+    }
+
+    .subpresets-group-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+    }
+
+    .subpreset-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .subpreset-chip-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+    }
+
+    .subpreset-chip-item input[type="number"] {
+      width: 54px;
+      padding: 3px 4px;
+      font-size: 12px;
+      text-align: center;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: #18181b;
+      color: #ffffff;
+      outline: none;
+    }
+
+    .subpreset-chip-item input[type="text"] {
+      width: 56px;
+      padding: 3px 5px;
+      font-size: 11px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: #18181b;
+      color: #d4d4d8;
+      outline: none;
+    }
+
+    .subpreset-add-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .subpreset-add-bar input[type="number"] {
+      width: 90px;
+      padding: 5px 8px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: #1c1c1e;
+      color: #ffffff;
+      outline: none;
     }
   `;
 
@@ -1331,126 +1595,474 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     `;
   }
 
-  private _renderInteractiveImagePlacer() {
-    if (!this._config) return null;
-    const bgImage =
-      this._config.light_selection_image ||
-      this._config.light_image ||
-      this._config.image ||
-      this._config.floorplan_image;
-    if (!bgImage) return null;
+  private _renderPresetsAndSubpresetsSection() {
+    if (!this._config) return html``;
 
-    const effectiveList = this._getEffectiveSelectionEntities();
-    if (effectiveList.length === 0) return null;
+    const presets = this._getEffectivePresets();
+    const isPresetsCustom = Array.isArray(this._config.presets);
 
-    const dragItem =
-      this._dragEntityIdx !== null ? effectiveList[this._dragEntityIdx] : undefined;
-    const dragEntityId =
-      dragItem !== undefined
-        ? typeof dragItem === "string"
-          ? dragItem
-          : dragItem.entity
-        : "";
-    const dragLabel =
-      dragItem !== undefined && typeof dragItem === "object" && dragItem.name
-        ? dragItem.name
-        : this.hass?.states[dragEntityId]?.attributes?.friendly_name ||
-          dragEntityId.replace(/^[^.]+\./, "").replace(/_/g, " ");
-
-    const canvasHeight = resolveImageCanvasHeight(
-      this._config.light_selection_image_height ?? this._config.image_height
-    );
-    const imageFit = resolveImageObjectFit(
-      this._config.light_selection_image_fit ?? this._config.image_fit
-    );
-    const stageStyle = canvasHeight ? `height: ${canvasHeight};` : "";
-    const stageImgStyle = canvasHeight
-      ? `height: 100%; max-height: none; object-fit: ${imageFit};`
-      : "";
+    const bSubpresets = this._getEffectiveBrightnessSubpresets();
+    const tSubpresets = this._getEffectiveTempSubpresets();
+    const cSubpresets = this._getEffectiveColorSubpresets();
 
     return html`
-      <div class="editor-image-placer">
-        <div class="editor-placer-header">
-          <label style="font-size: 13px; font-weight: 600;">Drag Icons on Image to Reposition</label>
-          ${this._dragEntityIdx !== null && this._dragEntityCoords
+      <!-- Section: Presets & Subpresets -->
+      <div class="section-title">Presets & Subpresets</div>
+
+      <!-- Toggle Presets Row -->
+      <div class="switch-row">
+        <div>
+          <span>Show Presets / Scenes Row</span>
+          <div style="font-size: 11px; color: var(--secondary-text-color, #9ca3af);">
+            Display quick preset pills at the bottom of the card (default: on)
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          .checked=${this._config.show_presets !== false}
+          .configValue=${"show_presets"}
+          @change=${this._valueChanged}
+        />
+      </div>
+
+      <!-- Max Preset Rows -->
+      <div class="form-row">
+        <label>Max Preset Rows (Default: 3)</label>
+        <input
+          type="number"
+          min="1"
+          max="10"
+          .value=${this._config.preset_max_rows !== undefined ? String(this._config.preset_max_rows) : "3"}
+          .configValue=${"preset_max_rows"}
+          @input=${this._valueChanged}
+          placeholder="3"
+        />
+      </div>
+
+      <!-- Main Presets Editor -->
+      <div class="form-row">
+        <div class="subsection-header">
+          <label>Presets (Pills)</label>
+          ${isPresetsCustom
             ? html`
-                <span class="editor-drag-readout">
-                  ${dragLabel}: X ${this._dragEntityCoords.x}% • Y ${this._dragEntityCoords.y}%
-                </span>
+                <button
+                  type="button"
+                  class="reset-defaults-btn"
+                  @click=${this._resetPresetsToDefault}
+                  title="Restore default presets"
+                >
+                  ↺ Reset Presets
+                </button>
               `
             : html`
-                <span style="font-size: 11px; color: var(--secondary-text-color, #9ca3af);">
-                  Syncs with X% / Y% below
-                </span>
+                <span style="font-size: 11px; color: #f59e0b;">Using default presets</span>
               `}
         </div>
-        <div class="editor-image-stage" style="${stageStyle}">
-          <img class="editor-stage-img" src="${bgImage}" style="${stageImgStyle}" alt="Interactive position map" />
-          ${effectiveList.map((item, idx) => {
-            const entityId = typeof item === "string" ? item : item.entity;
-            const customName = typeof item === "object" ? item.name : undefined;
-            const customIcon = typeof item === "object" ? item.icon : undefined;
-            const stateObj = this.hass?.states[entityId];
-            const label =
-              customName ||
-              stateObj?.attributes?.friendly_name ||
-              entityId.replace(/^[^.]+\./, "").replace(/_/g, " ");
-            const iconPath = customIcon || stateObj?.attributes?.icon;
 
-            const rawX =
-              typeof item === "object"
-                ? (item.x ?? (item as any).x_position ?? (item as any).left)
-                : undefined;
-            const rawY =
-              typeof item === "object"
-                ? (item.y ?? (item as any).y_position ?? (item as any).top)
-                : undefined;
+        <div class="entity-list">
+          ${presets.length > 0
+            ? presets.map((preset, idx) => {
+                const rgb = resolvePresetRgb(preset);
+                const hexColor = rgb ? rgbToHex(rgb.r, rgb.g, rgb.b) : "";
+                const isFirst = idx === 0;
+                const isLast = idx === presets.length - 1;
 
-            const parsedX =
-              typeof rawX === "number"
-                ? rawX
-                : typeof rawX === "string" && (rawX as string).trim() !== ""
-                ? parseFloat(rawX)
-                : undefined;
-            const parsedY =
-              typeof rawY === "number"
-                ? rawY
-                : typeof rawY === "string" && (rawY as string).trim() !== ""
-                ? parseFloat(rawY)
-                : undefined;
+                return html`
+                  <div class="entity-item-row light-edit-row">
+                    <div class="entity-row-top">
+                      <input
+                        type="text"
+                        class="entity-label-input"
+                        .value=${preset.name || ""}
+                        @input=${(e: Event) =>
+                          this._updatePresetField(idx, "name", (e.target as HTMLInputElement).value)}
+                        placeholder="Preset Name"
+                        title="Preset display name"
+                      />
+                      <input
+                        type="text"
+                        class="entity-icon-input"
+                        .value=${preset.icon || ""}
+                        @input=${(e: Event) =>
+                          this._updatePresetField(idx, "icon", (e.target as HTMLInputElement).value)}
+                        placeholder="mdi:palette"
+                        title="MDI icon (e.g. mdi:weather-sunset)"
+                      />
+                      <div class="entity-item-actions">
+                        <button
+                          type="button"
+                          class="icon-btn"
+                          ?disabled=${isFirst}
+                          @click=${() => this._movePreset(idx, -1)}
+                          title="Move preset up"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          class="icon-btn"
+                          ?disabled=${isLast}
+                          @click=${() => this._movePreset(idx, 1)}
+                          title="Move preset down"
+                        >
+                          ▼
+                        </button>
+                        <button
+                          type="button"
+                          class="icon-btn delete-btn"
+                          @click=${() => this._removePreset(idx)}
+                          title="Remove preset"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
 
-            const defaultX =
-              effectiveList.length > 1
-                ? Math.round((100 / (effectiveList.length + 1)) * (idx + 1))
-                : 50;
-            const defaultY = 50;
-
-            const isDraggingThis = this._dragEntityIdx === idx && this._dragEntityCoords !== null;
-            const posX = isDraggingThis
-              ? this._dragEntityCoords!.x
-              : parsedX !== undefined && !isNaN(parsedX)
-              ? Math.max(0, Math.min(100, parsedX))
-              : defaultX;
-            const posY = isDraggingThis
-              ? this._dragEntityCoords!.y
-              : parsedY !== undefined && !isNaN(parsedY)
-              ? Math.max(0, Math.min(100, parsedY))
-              : defaultY;
-
-            return html`
-              <div
-                class="editor-drag-orb ${isDraggingThis ? "is-dragging" : ""}"
-                style="left: ${posX}%; top: ${posY}%;"
-                @pointerdown=${(e: PointerEvent) => this._onEditorOrbDragStart(idx, posX, posY, e)}
-                title="Drag ${label} (${posX}%, ${posY}%)"
-              >
-                <div class="editor-orb-circle">
-                  ${renderIcon(iconPath, ICONS.lightbulb, 20)}
+                    <div class="preset-fields-grid">
+                      <div class="mini-field">
+                        <span>Brightness %</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          .value=${preset.brightness !== undefined ? String(preset.brightness) : ""}
+                          @change=${(e: Event) =>
+                            this._updatePresetField(idx, "brightness", (e.target as HTMLInputElement).value)}
+                          placeholder="—"
+                        />
+                      </div>
+                      <div class="mini-field">
+                        <span>Kelvin (K)</span>
+                        <input
+                          type="number"
+                          min="1000"
+                          max="10000"
+                          step="100"
+                          .value=${preset.kelvin !== undefined ? String(preset.kelvin) : ""}
+                          @change=${(e: Event) =>
+                            this._updatePresetField(idx, "kelvin", (e.target as HTMLInputElement).value)}
+                          placeholder="—"
+                        />
+                      </div>
+                      <div class="mini-field">
+                        <span>RGB Color</span>
+                        <div class="preset-color-ctrl">
+                          <input
+                            type="color"
+                            class="color-swatch-input"
+                            .value=${hexColor || "#ffa657"}
+                            @input=${(e: Event) =>
+                              this._updatePresetRgb(idx, (e.target as HTMLInputElement).value)}
+                            title=${rgb ? `RGB: ${rgb.r}, ${rgb.g}, ${rgb.b}` : "Set RGB color"}
+                          />
+                          ${rgb
+                            ? html`
+                                <button
+                                  type="button"
+                                  class="icon-btn delete-btn"
+                                  style="width: 24px; height: 24px;"
+                                  @click=${() => this._clearPresetRgb(idx)}
+                                  title="Clear RGB color"
+                                >
+                                  ✕
+                                </button>
+                              `
+                            : html`<span style="font-size: 11px; color: #71717a;">None</span>`}
+                        </div>
+                      </div>
+                      <div class="mini-field">
+                        <span>Scene (Opt)</span>
+                        <input
+                          type="text"
+                          .value=${preset.scene || ""}
+                          @change=${(e: Event) =>
+                            this._updatePresetField(idx, "scene", (e.target as HTMLInputElement).value)}
+                          placeholder="scene.xxx"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                `;
+              })
+            : html`
+                <div style="font-size: 12px; color: var(--secondary-text-color, #9ca3af); font-style: italic; padding: 4px 0;">
+                  No presets configured. Click "+ Add Preset" below to add one.
                 </div>
-                <span class="editor-orb-badge">${label}</span>
+              `}
+
+          <button
+            type="button"
+            class="add-btn"
+            style="padding: 8px 16px; align-self: flex-start; margin-top: 2px;"
+            @click=${this._addPreset}
+          >
+            + Add Preset
+          </button>
+        </div>
+      </div>
+
+      <!-- Toggle Subpresets Row -->
+      <div class="switch-row">
+        <div>
+          <span>Show Subpresets</span>
+          <div style="font-size: 11px; color: var(--secondary-text-color, #9ca3af);">
+            Quick-access bubbles for brightness / temp / color (default: on)
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          .checked=${this._config.show_subpresets !== false}
+          .configValue=${"show_subpresets"}
+          @change=${this._valueChanged}
+        />
+      </div>
+
+      <!-- Brightness Subpresets -->
+      <div class="subpresets-group-card">
+        <div class="subsection-header" style="margin-top: 0;">
+          <label style="font-size: 12px; font-weight: 600;">Brightness Subpresets (%)</label>
+          ${this._hasCustomBrightnessSubpresets()
+            ? html`
+                <button
+                  type="button"
+                  class="reset-defaults-btn"
+                  @click=${this._resetBrightnessSubpresets}
+                >
+                  ↺ Reset
+                </button>
+              `
+            : html`<span style="font-size: 11px; color: #f59e0b;">Default</span>`}
+        </div>
+        <div class="subpreset-chip-list">
+          ${bSubpresets.map(
+            (item, idx) => html`
+              <div class="subpreset-chip-item">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  .value=${String(item.value)}
+                  @change=${(e: Event) =>
+                    this._updateBrightnessSubpreset(
+                      idx,
+                      Number((e.target as HTMLInputElement).value),
+                      item.label
+                    )}
+                  title="Brightness %"
+                />
+                <input
+                  type="text"
+                  .value=${item.label ?? ""}
+                  @change=${(e: Event) =>
+                    this._updateBrightnessSubpreset(
+                      idx,
+                      item.value,
+                      (e.target as HTMLInputElement).value
+                    )}
+                  placeholder="${item.value}%"
+                  title="Optional custom label"
+                />
+                <button
+                  type="button"
+                  class="chip-remove"
+                  @click=${() => this._removeBrightnessSubpreset(idx)}
+                  title="Remove"
+                >
+                  ✕
+                </button>
               </div>
-            `;
-          })}
+            `
+          )}
+        </div>
+        <div class="subpreset-add-bar">
+          <input
+            type="number"
+            min="0"
+            max="100"
+            .value=${this._newBrightnessSubpreset}
+            @input=${(e: Event) =>
+              (this._newBrightnessSubpreset = (e.target as HTMLInputElement).value)}
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                this._addBrightnessSubpreset();
+              }
+            }}
+            placeholder="e.g. 50"
+          />
+          <button
+            type="button"
+            class="add-btn"
+            style="padding: 5px 12px; font-size: 12px;"
+            @click=${this._addBrightnessSubpreset}
+          >
+            + Add %
+          </button>
+        </div>
+      </div>
+
+      <!-- Temperature Subpresets -->
+      <div class="subpresets-group-card">
+        <div class="subsection-header" style="margin-top: 0;">
+          <label style="font-size: 12px; font-weight: 600;">Temperature Subpresets (Kelvin)</label>
+          ${this._hasCustomTempSubpresets()
+            ? html`
+                <button
+                  type="button"
+                  class="reset-defaults-btn"
+                  @click=${this._resetTempSubpresets}
+                >
+                  ↺ Reset
+                </button>
+              `
+            : html`<span style="font-size: 11px; color: #f59e0b;">Default</span>`}
+        </div>
+        <div class="subpreset-chip-list">
+          ${tSubpresets.map(
+            (item, idx) => html`
+              <div class="subpreset-chip-item">
+                <input
+                  type="number"
+                  min="1000"
+                  max="10000"
+                  step="100"
+                  style="width: 64px;"
+                  .value=${String(item.kelvin)}
+                  @change=${(e: Event) =>
+                    this._updateTempSubpreset(
+                      idx,
+                      Number((e.target as HTMLInputElement).value),
+                      item.label
+                    )}
+                  title="Temperature (K)"
+                />
+                <input
+                  type="text"
+                  .value=${item.label ?? ""}
+                  @change=${(e: Event) =>
+                    this._updateTempSubpreset(
+                      idx,
+                      item.kelvin,
+                      (e.target as HTMLInputElement).value
+                    )}
+                  placeholder="${item.kelvin}K"
+                  title="Optional custom label"
+                />
+                <button
+                  type="button"
+                  class="chip-remove"
+                  @click=${() => this._removeTempSubpreset(idx)}
+                  title="Remove"
+                >
+                  ✕
+                </button>
+              </div>
+            `
+          )}
+        </div>
+        <div class="subpreset-add-bar">
+          <input
+            type="number"
+            min="1000"
+            max="10000"
+            step="100"
+            .value=${this._newTempSubpreset}
+            @input=${(e: Event) => (this._newTempSubpreset = (e.target as HTMLInputElement).value)}
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                this._addTempSubpreset();
+              }
+            }}
+            placeholder="e.g. 3000"
+          />
+          <button
+            type="button"
+            class="add-btn"
+            style="padding: 5px 12px; font-size: 12px;"
+            @click=${this._addTempSubpreset}
+          >
+            + Add K
+          </button>
+        </div>
+      </div>
+
+      <!-- Color Subpresets -->
+      <div class="subpresets-group-card">
+        <div class="subsection-header" style="margin-top: 0;">
+          <label style="font-size: 12px; font-weight: 600;">Color Subpresets</label>
+          ${this._hasCustomColorSubpresets()
+            ? html`
+                <button
+                  type="button"
+                  class="reset-defaults-btn"
+                  @click=${this._resetColorSubpresets}
+                >
+                  ↺ Reset
+                </button>
+              `
+            : html`<span style="font-size: 11px; color: #f59e0b;">Default</span>`}
+        </div>
+        <div class="subpreset-chip-list">
+          ${cSubpresets.map(
+            (item, idx) => html`
+              <div class="subpreset-chip-item">
+                <input
+                  type="color"
+                  class="color-swatch-input"
+                  style="width: 26px; height: 24px;"
+                  .value=${item.color}
+                  @input=${(e: Event) =>
+                    this._updateColorSubpreset(
+                      idx,
+                      (e.target as HTMLInputElement).value,
+                      item.label
+                    )}
+                  title="${item.color}"
+                />
+                <input
+                  type="text"
+                  style="width: 66px;"
+                  .value=${item.label ?? item.color}
+                  @change=${(e: Event) => {
+                    const v = (e.target as HTMLInputElement).value.trim();
+                    const parsed = parseColorInput(v);
+                    if (parsed) {
+                      this._updateColorSubpreset(idx, rgbToHex(parsed.r, parsed.g, parsed.b));
+                    } else {
+                      this._updateColorSubpreset(idx, item.color, v);
+                    }
+                  }}
+                  title="Hex color or custom label"
+                />
+                <button
+                  type="button"
+                  class="chip-remove"
+                  @click=${() => this._removeColorSubpreset(idx)}
+                  title="Remove"
+                >
+                  ✕
+                </button>
+              </div>
+            `
+          )}
+        </div>
+        <div class="subpreset-add-bar">
+          <input
+            type="color"
+            class="color-swatch-input"
+            .value=${this._newColorSubpreset}
+            @input=${(e: Event) =>
+              (this._newColorSubpreset = (e.target as HTMLInputElement).value)}
+          />
+          <button
+            type="button"
+            class="add-btn"
+            style="padding: 5px 12px; font-size: 12px;"
+            @click=${this._addColorSubpreset}
+          >
+            + Add Color
+          </button>
         </div>
       </div>
     `;
@@ -1593,20 +2205,6 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
           </div>
         </div>
 
-        <!-- Max Preset Rows -->
-        <div class="form-row">
-          <label>Max Preset Rows (Default: 3)</label>
-          <input
-            type="number"
-            min="1"
-            max="10"
-            .value=${this._config.preset_max_rows !== undefined ? String(this._config.preset_max_rows) : "3"}
-            .configValue=${"preset_max_rows"}
-            @input=${this._valueChanged}
-            placeholder="3"
-          />
-        </div>
-
         <!-- Adaptive Lighting Entity (switch.* picker) -->
         ${this._renderAdaptiveEntityPicker()}
 
@@ -1731,33 +2329,6 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
           />
         </div>
 
-        <!-- Toggle Presets Row -->
-        <div class="switch-row">
-          <span>Show Presets / Scenes Row</span>
-          <input
-            type="checkbox"
-            .checked=${this._config.show_presets !== false}
-            .configValue=${"show_presets"}
-            @change=${this._valueChanged}
-          />
-        </div>
-
-        <!-- Toggle Subpresets Row -->
-        <div class="switch-row">
-          <div>
-            <span>Show Subpresets</span>
-            <div style="font-size: 11px; color: var(--secondary-text-color, #9ca3af);">
-              Quick-access bubbles for brightness / temp / color (default: on)
-            </div>
-          </div>
-          <input
-            type="checkbox"
-            .checked=${this._config.show_subpresets !== false}
-            .configValue=${"show_subpresets"}
-            @change=${this._valueChanged}
-          />
-        </div>
-
         <!-- Toggle Highlight Mode Buttons -->
         <div class="switch-row">
           <div>
@@ -1773,6 +2344,8 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
             @change=${this._valueChanged}
           />
         </div>
+
+        ${this._renderPresetsAndSubpresetsSection()}
 
         <!-- Section: Multi-Light Group Selection -->
         <div class="section-title">Light Group Selection</div>
@@ -1920,8 +2493,6 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
               </div>
             `;
           })()}
-
-          ${this._renderInteractiveImagePlacer()}
         </div>
 
         <div class="switch-row">
@@ -2049,11 +2620,7 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                                   min="0"
                                   max="100"
                                   step="1"
-                                  .value=${this._dragEntityIdx === idx && this._dragEntityCoords
-                                    ? String(this._dragEntityCoords.x)
-                                    : coordX !== undefined
-                                    ? String(coordX)
-                                    : ""}
+                                  .value=${coordX !== undefined ? String(coordX) : ""}
                                   @change=${(e: Event) => this._updateEntityCoord(idx, "x", e)}
                                   placeholder="auto"
                                   title="X position on image (0 - 100%)"
@@ -2066,11 +2633,7 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                                   min="0"
                                   max="100"
                                   step="1"
-                                  .value=${this._dragEntityIdx === idx && this._dragEntityCoords
-                                    ? String(this._dragEntityCoords.y)
-                                    : coordY !== undefined
-                                    ? String(coordY)
-                                    : ""}
+                                  .value=${coordY !== undefined ? String(coordY) : ""}
                                   @change=${(e: Event) => this._updateEntityCoord(idx, "y", e)}
                                   placeholder="auto"
                                   title="Y position on image (0 - 100%)"
