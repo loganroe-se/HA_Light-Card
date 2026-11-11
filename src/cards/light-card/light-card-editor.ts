@@ -79,6 +79,12 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
   private _newColorSubpreset = "#FF9500";
 
   @state()
+  private _addPresetMode: "closed" | "choose" | "scene" = "closed";
+
+  @state()
+  private _scenePresetSearch = "";
+
+  @state()
   private _dragReorderList: "lights" | "presets" | null = null;
 
   @state()
@@ -534,7 +540,17 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     this._commitPresets(list);
   }
 
-  private _addPreset(): void {
+  private _openAddPresetChooser(): void {
+    this._scenePresetSearch = "";
+    this._addPresetMode = "choose";
+  }
+
+  private _closeAddPresetChooser(): void {
+    this._scenePresetSearch = "";
+    this._addPresetMode = "closed";
+  }
+
+  private _addCustomPreset(): void {
     const list = this._getEffectivePresets().map((p) => ({ ...p }));
     list.push({
       name: `Preset ${list.length + 1}`,
@@ -542,6 +558,30 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
       brightness: 75,
       kelvin: 3000
     });
+    this._addPresetMode = "closed";
+    this._commitPresets(list);
+  }
+
+  private _addScenePreset(rawSceneId: string): void {
+    const trimmed = rawSceneId.trim();
+    if (!trimmed) return;
+    const entityId = trimmed.startsWith("scene.") ? trimmed : `scene.${trimmed.replace(/\s+/g, "_").toLowerCase()}`;
+    const stateObj = this.hass?.states[entityId];
+    const fallbackName = entityId
+      .replace(/^scene\./, "")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (ch) => ch.toUpperCase());
+    const name = String(stateObj?.attributes?.friendly_name || fallbackName || entityId);
+    const icon = String(stateObj?.attributes?.icon || "mdi:palette");
+
+    const list = this._getEffectivePresets().map((p) => ({ ...p }));
+    list.push({
+      name,
+      icon,
+      scene: entityId
+    });
+    this._scenePresetSearch = "";
+    this._addPresetMode = "closed";
     this._commitPresets(list);
   }
 
@@ -561,7 +601,12 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
       } else {
         const num = Number(trimmed);
         if (!isNaN(num)) {
-          item[field] = field === "brightness" ? Math.max(0, Math.min(100, num)) : Math.max(1000, Math.min(10000, num));
+          item[field] = field === "brightness" ? Math.max(0, Math.min(100, num)) : Math.max(1000, Math.min(20000, num));
+          if (field === "kelvin") {
+            delete item.rgb;
+            delete item.rgb_color;
+            delete item.color;
+          }
         }
       }
     } else if (field === "name") {
@@ -585,6 +630,7 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     item.rgb = [parsed.r, parsed.g, parsed.b];
     delete item.rgb_color;
     delete item.color;
+    delete item.kelvin;
     this._commitPresets(list);
   }
 
@@ -738,7 +784,7 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     const list = this._getEffectiveTempSubpresets();
     if (!list[index]) return;
     list[index] = {
-      kelvin: Math.max(1000, Math.min(10000, isNaN(kelvin) ? list[index].kelvin : kelvin)),
+      kelvin: Math.max(1000, Math.min(20000, isNaN(kelvin) ? list[index].kelvin : kelvin)),
       label
     };
     this._commitTempSubpresets(list);
@@ -753,7 +799,7 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     const val = Number(this._newTempSubpreset.trim());
     if (this._newTempSubpreset.trim() === "" || isNaN(val)) return;
     const list = this._getEffectiveTempSubpresets();
-    list.push({ kelvin: Math.max(1000, Math.min(10000, Math.round(val))) });
+    list.push({ kelvin: Math.max(1000, Math.min(20000, Math.round(val))) });
     this._newTempSubpreset = "";
     this._commitTempSubpresets(list);
   }
@@ -1388,6 +1434,76 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
       cursor: pointer;
     }
 
+    .add-preset-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 10px;
+      margin-top: 2px;
+    }
+
+    .add-preset-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .add-preset-choices {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .add-preset-choice-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(0, 0, 0, 0.25);
+      color: #ffffff;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .add-preset-choice-btn:hover {
+      border-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.12);
+    }
+
+    .add-preset-choice-title {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .add-preset-choice-desc {
+      font-size: 11px;
+      color: var(--secondary-text-color, #9ca3af);
+      line-height: 1.3;
+    }
+
+    .scene-picker-list {
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      background: #1f1f23;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 4px;
+    }
+
     .subpresets-group-card {
       display: flex;
       flex-direction: column;
@@ -1757,6 +1873,158 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     `;
   }
 
+  private _renderAddPresetControl() {
+    if (this._addPresetMode === "closed") {
+      return html`
+        <button
+          type="button"
+          class="add-btn"
+          style="padding: 8px 16px; align-self: flex-start; margin-top: 2px;"
+          @click=${this._openAddPresetChooser}
+        >
+          + Add Preset
+        </button>
+      `;
+    }
+
+    if (this._addPresetMode === "choose") {
+      return html`
+        <div class="add-preset-panel">
+          <div class="add-preset-header">
+            <span>Add Preset Type</span>
+            <button
+              type="button"
+              class="icon-btn delete-btn"
+              style="width: 24px; height: 24px;"
+              @click=${this._closeAddPresetChooser}
+              title="Cancel"
+            >
+              ✕
+            </button>
+          </div>
+          <div class="add-preset-choices">
+            <button type="button" class="add-preset-choice-btn" @click=${this._addCustomPreset}>
+              <span class="add-preset-choice-title">Custom Preset</span>
+              <span class="add-preset-choice-desc">Define brightness, temperature (K), or RGB color manually</span>
+            </button>
+            <button
+              type="button"
+              class="add-preset-choice-btn"
+              @click=${() => {
+                this._scenePresetSearch = "";
+                this._addPresetMode = "scene";
+              }}
+            >
+              <span class="add-preset-choice-title">Home Assistant Scene</span>
+              <span class="add-preset-choice-desc">Pick an existing scene.* entity from Home Assistant</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    const scenes = this._getFilteredHassEntities(this._scenePresetSearch, "scene");
+    const rawQuery = this._scenePresetSearch.trim();
+    const normalizedQuery = rawQuery
+      ? rawQuery.startsWith("scene.")
+        ? rawQuery
+        : `scene.${rawQuery.replace(/\s+/g, "_").toLowerCase()}`
+      : "";
+    const hasExactSceneMatch = normalizedQuery
+      ? scenes.some((s) => s.entity_id === normalizedQuery)
+      : true;
+
+    return html`
+      <div class="add-preset-panel">
+        <div class="add-preset-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button
+              type="button"
+              class="reset-defaults-btn"
+              @click=${() => {
+                this._addPresetMode = "choose";
+              }}
+            >
+              ← Back
+            </button>
+            <span>Select Home Assistant Scene</span>
+          </div>
+          <button
+            type="button"
+            class="icon-btn delete-btn"
+            style="width: 24px; height: 24px;"
+            @click=${this._closeAddPresetChooser}
+            title="Cancel"
+          >
+            ✕
+          </button>
+        </div>
+
+        <input
+          type="text"
+          .value=${this._scenePresetSearch}
+          @input=${(e: Event) => {
+            this._scenePresetSearch = (e.target as HTMLInputElement).value;
+          }}
+          @keydown=${(e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+              this._closeAddPresetChooser();
+            } else if (e.key === "Enter" && rawQuery) {
+              e.preventDefault();
+              if (scenes.length > 0) {
+                this._addScenePreset(scenes[0].entity_id);
+              } else {
+                this._addScenePreset(normalizedQuery);
+              }
+            }
+          }}
+          placeholder="Search scene.* entities by name or ID..."
+        />
+
+        <div class="scene-picker-list">
+          ${scenes.length > 0
+            ? scenes.map((stateObj) => {
+                const id = stateObj.entity_id;
+                const name = stateObj.attributes?.friendly_name || id;
+                return html`
+                  <div
+                    class="dropdown-item"
+                    @click=${() => this._addScenePreset(id)}
+                  >
+                    <div class="dropdown-item-text">
+                      <span class="dropdown-item-name">${name}</span>
+                      <span class="dropdown-item-id">${id}</span>
+                    </div>
+                    <span class="domain-badge">scene</span>
+                  </div>
+                `;
+              })
+            : html`
+                <div class="dropdown-empty">
+                  ${rawQuery
+                    ? `No matching scene.* entities found for "${rawQuery}".`
+                    : "No scene.* entities found in Home Assistant."}
+                </div>
+              `}
+          ${rawQuery && !hasExactSceneMatch
+            ? html`
+                <div
+                  class="dropdown-item"
+                  @click=${() => this._addScenePreset(normalizedQuery)}
+                >
+                  <div class="dropdown-item-text">
+                    <span class="dropdown-item-name">Use "${normalizedQuery}"</span>
+                    <span class="dropdown-item-id">Add custom scene entity ID manually</span>
+                  </div>
+                  <span class="domain-badge">manual</span>
+                </div>
+              `
+            : null}
+        </div>
+      </div>
+    `;
+  }
+
   private _renderPresetsAndSubpresetsSection() {
     if (!this._config) return html``;
 
@@ -1766,8 +2034,17 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     const bSubpresets = this._getEffectiveBrightnessSubpresets();
     const tSubpresets = this._getEffectiveTempSubpresets();
     const cSubpresets = this._getEffectiveColorSubpresets();
+    const allScenes = this._getFilteredHassEntities("", "scene");
 
     return html`
+      <datalist id="ha-scenes-datalist">
+        ${allScenes.map(
+          (stateObj) => html`
+            <option value=${stateObj.entity_id}>${stateObj.attributes?.friendly_name || stateObj.entity_id}</option>
+          `
+        )}
+      </datalist>
+
       <!-- Section: Presets & Subpresets -->
       <div class="section-title">Presets & Subpresets</div>
 
@@ -1894,7 +2171,7 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                         <input
                           type="number"
                           min="1000"
-                          max="10000"
+                          max="20000"
                           step="100"
                           .value=${preset.kelvin !== undefined ? String(preset.kelvin) : ""}
                           @change=${(e: Event) =>
@@ -1932,6 +2209,7 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                         <span>Scene (Opt)</span>
                         <input
                           type="text"
+                          list="ha-scenes-datalist"
                           .value=${preset.scene || ""}
                           @change=${(e: Event) =>
                             this._updatePresetField(idx, "scene", (e.target as HTMLInputElement).value)}
@@ -1948,14 +2226,7 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                 </div>
               `}
 
-          <button
-            type="button"
-            class="add-btn"
-            style="padding: 8px 16px; align-self: flex-start; margin-top: 2px;"
-            @click=${this._addPreset}
-          >
-            + Add Preset
-          </button>
+          ${this._renderAddPresetControl()}
         </div>
       </div>
 
@@ -2082,7 +2353,7 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                 <input
                   type="number"
                   min="1000"
-                  max="10000"
+                  max="20000"
                   step="100"
                   style="width: 64px;"
                   .value=${String(item.kelvin)}
@@ -2122,7 +2393,7 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
           <input
             type="number"
             min="1000"
-            max="10000"
+            max="20000"
             step="100"
             .value=${this._newTempSubpreset}
             @input=${(e: Event) => (this._newTempSubpreset = (e.target as HTMLInputElement).value)}
@@ -2359,6 +2630,36 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
               .configValue=${"max_brightness"}
               @input=${this._valueChanged}
               placeholder="100"
+            />
+          </div>
+        </div>
+
+        <!-- Min & Max Temperature -->
+        <div class="form-row-grid">
+          <div class="form-row">
+            <label>Min Temperature (K)</label>
+            <input
+              type="number"
+              min="1000"
+              max="20000"
+              step="100"
+              .value=${this._config.min_kelvin !== undefined ? String(this._config.min_kelvin) : "2000"}
+              .configValue=${"min_kelvin"}
+              @input=${this._valueChanged}
+              placeholder="2000"
+            />
+          </div>
+          <div class="form-row">
+            <label>Max Temperature (K)</label>
+            <input
+              type="number"
+              min="1000"
+              max="20000"
+              step="100"
+              .value=${this._config.max_kelvin !== undefined ? String(this._config.max_kelvin) : "6500"}
+              .configValue=${"max_kelvin"}
+              @input=${this._valueChanged}
+              placeholder="6500"
             />
           </div>
         </div>

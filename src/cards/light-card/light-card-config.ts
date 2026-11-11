@@ -143,28 +143,28 @@ export const DEFAULT_PRESETS: PresetConfig[] = [
     icon: "mdi:palette",
     brightness: 60,
     kelvin: 2700,
-    rgb: [255, 166, 87]
+    icon_color: "rgb(255, 166, 87)"
   },
   {
     name: "Relax",
     icon: "mdi:weather-sunset",
     brightness: 35,
     kelvin: 2200,
-    rgb: [255, 146, 39]
+    icon_color: "rgb(255, 146, 39)"
   },
   {
     name: "Read",
     icon: "mdi:book-open",
     brightness: 80,
     kelvin: 4000,
-    rgb: [255, 205, 166]
+    icon_color: "rgb(255, 205, 166)"
   },
   {
     name: "Night",
     icon: "mdi:weather-night",
     brightness: 5,
     kelvin: 2000,
-    rgb: [255, 137, 14]
+    icon_color: "rgb(255, 137, 14)"
   }
 ];
 

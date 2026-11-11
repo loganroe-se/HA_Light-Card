@@ -40,6 +40,9 @@ export class HaLightCard extends LitElement implements LovelaceCard {
   @state()
   private _config?: LightCardConfig;
 
+  private _hasCustomMinKelvin = false;
+  private _hasCustomMaxKelvin = false;
+
   @state()
   private _mode: SliderMode = "brightness";
 
@@ -175,6 +178,9 @@ export class HaLightCard extends LitElement implements LovelaceCard {
       max_kelvin: 6500,
       ...config
     };
+
+    this._hasCustomMinKelvin = config.min_kelvin !== undefined && Number.isFinite(Number(config.min_kelvin));
+    this._hasCustomMaxKelvin = config.max_kelvin !== undefined && Number.isFinite(Number(config.max_kelvin));
 
     if (config.color_text_format && !this._config.color_format) {
       this._config.color_format = config.color_text_format;
@@ -870,12 +876,22 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     const rawBrightness = attrs.brightness !== undefined ? attrs.brightness : (isOn ? 255 : 0);
     const brightnessPct = brightnessToPct(rawBrightness);
 
-    const minKelvin =
+    const entityMinKelvin =
       attrs.min_color_temp_kelvin ||
       (attrs.max_mireds ? Math.round(1000000 / attrs.max_mireds) : this._config?.min_kelvin || 2000);
-    const maxKelvin =
+    const entityMaxKelvin =
       attrs.max_color_temp_kelvin ||
       (attrs.min_mireds ? Math.round(1000000 / attrs.min_mireds) : this._config?.max_kelvin || 6500);
+    const rawMinKelvin =
+      this._hasCustomMinKelvin && this._config?.min_kelvin !== undefined
+        ? Number(this._config.min_kelvin)
+        : entityMinKelvin;
+    const rawMaxKelvin =
+      this._hasCustomMaxKelvin && this._config?.max_kelvin !== undefined
+        ? Number(this._config.max_kelvin)
+        : entityMaxKelvin;
+    const minKelvin = Math.min(rawMinKelvin, rawMaxKelvin);
+    const maxKelvin = Math.max(rawMinKelvin, rawMaxKelvin);
 
     let kelvin = attrs.color_temp_kelvin;
     if (!kelvin && attrs.color_temp) {
@@ -1384,9 +1400,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
 
     if (preset.kelvin !== undefined) {
       serviceData.color_temp_kelvin = preset.kelvin;
-    }
-
-    if (presetRgb) {
+    } else if (presetRgb) {
       serviceData.rgb_color = [presetRgb.r, presetRgb.g, presetRgb.b];
     }
 
@@ -1415,9 +1429,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
       if (data.kelvin !== preset.kelvin) {
         return false;
       }
-    }
-
-    if (presetRgb) {
+    } else if (presetRgb) {
       hasAnyField = true;
       if (
         !data.rgb ||
@@ -2734,12 +2746,18 @@ export class HaLightCard extends LitElement implements LovelaceCard {
                 ${presetsList.map((preset) => {
                   const isActive = this._isPresetActive(preset, currentData);
                   const presetRgb = resolvePresetRgb(preset);
+                  const fallbackKelvinRgb =
+                    preset.kelvin !== undefined
+                      ? kelvinToRgb(preset.kelvin, currentData.minKelvin, currentData.maxKelvin)
+                      : null;
                   const iconColor =
                     preset.icon_color ||
                     (typeof preset.color === "string" && !presetRgb
                       ? preset.color
                       : presetRgb
                       ? `rgb(${presetRgb.r}, ${presetRgb.g}, ${presetRgb.b})`
+                      : fallbackKelvinRgb
+                      ? `rgb(${fallbackKelvinRgb.r}, ${fallbackKelvinRgb.g}, ${fallbackKelvinRgb.b})`
                       : "#f5b72e");
 
                   return html`
