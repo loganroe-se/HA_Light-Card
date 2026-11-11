@@ -12,7 +12,7 @@ import {
   resolveImageCanvasHeight,
   resolveImageObjectFit
 } from "./light-card-config";
-import { SliderMode, ColorTextFormat, formatSubtitle, throttle } from "../../utils/format";
+import { SliderMode, ColorTextFormat, formatSubtitle } from "../../utils/format";
 import { ICONS, renderIcon, resolvePresetIcon, renderSvgIcon } from "../../utils/icons";
 import {
   RGB,
@@ -57,6 +57,9 @@ export class HaLightCard extends LitElement implements LovelaceCard {
 
   @state()
   private _liveRgb: RGB | null = null;
+
+  @state()
+  private _liveIsOn: boolean | null = null;
 
   @state()
   private _localAdaptiveState = false;
@@ -111,16 +114,18 @@ export class HaLightCard extends LitElement implements LovelaceCard {
   private _dragInitialSelection: string[] = [];
   private _onWindowPointerMoveBound = (e: PointerEvent) => this._onSelectionPointerMove(e);
   private _onWindowPointerUpBound = (e: PointerEvent) => this._onSelectionPointerUp(e);
+  private _optimisticTimer: any = null;
 
-  private _throttledCall: (serviceData: Record<string, any>) => void;
-
-  constructor() {
-    super();
-    this._throttledCall = throttle((serviceData: Record<string, any>) => {
-      if (this.hass) {
-        this.hass.callService("light", "turn_on", serviceData);
-      }
-    }, 120);
+  private _clearLiveState(): void {
+    if (this._optimisticTimer) {
+      clearTimeout(this._optimisticTimer);
+      this._optimisticTimer = null;
+    }
+    this._liveBrightness = null;
+    this._liveKelvin = null;
+    this._liveHue = null;
+    this._liveRgb = null;
+    this._liveIsOn = null;
   }
 
   public override disconnectedCallback(): void {
@@ -137,6 +142,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
       clearTimeout(this._holdTimer);
       this._holdTimer = null;
     }
+    this._clearLiveState();
     window.removeEventListener("pointermove", this._onWindowPointerMoveBound);
     window.removeEventListener("pointerup", this._onWindowPointerUpBound);
     window.removeEventListener("pointercancel", this._onWindowPointerUpBound);
@@ -253,6 +259,30 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     }
 
     const data = this._getLightData();
+
+    if (changedProperties.has("hass") && !this._isDragging && this._optimisticTimer) {
+      let matched = true;
+      if (this._liveBrightness !== null) {
+        matched =
+          this._liveBrightness === 0
+            ? !data.isOn
+            : data.isOn && Math.abs(data.brightnessPct - this._liveBrightness) <= 2;
+      }
+      if (matched && this._liveKelvin !== null) {
+        matched = data.isOn && Math.abs(data.kelvin - this._liveKelvin) <= 50;
+      }
+      if (matched && this._liveRgb !== null) {
+        matched =
+          data.isOn &&
+          Math.abs(data.rgb.r - this._liveRgb.r) <= 5 &&
+          Math.abs(data.rgb.g - this._liveRgb.g) <= 5 &&
+          Math.abs(data.rgb.b - this._liveRgb.b) <= 5;
+      }
+      if (matched) {
+        this._clearLiveState();
+      }
+    }
+
     const allowBrightness = this._config.show_brightness !== false;
     const allowTemp =
       data.supportsTemp &&
@@ -908,7 +938,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     e.stopPropagation();
     if (!this.hass || !this._config) return;
     this._isDragging = false;
-    this._liveBrightness = null;
+    this._clearLiveState();
     this.hass.callService("light", "toggle", {
       entity_id: this._getTargetEntityId()
     });
@@ -1177,6 +1207,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     }
 
     this._isEditingSubtitle = false;
+    this._clearLiveState();
     const data = this._getLightData();
 
     if (this._mode === "brightness") {
@@ -1237,6 +1268,10 @@ export class HaLightCard extends LitElement implements LovelaceCard {
 
   private _onSliderInput(e: CustomEvent<SliderEventDetail>): void {
     const { ratio, mode } = e.detail;
+    if (this._optimisticTimer) {
+      clearTimeout(this._optimisticTimer);
+      this._optimisticTimer = null;
+    }
     this._isDragging = true;
     this._mode = mode;
     const data = this._getLightData();
@@ -1246,26 +1281,17 @@ export class HaLightCard extends LitElement implements LovelaceCard {
       const maxB = this._config?.max_brightness ?? 100;
       const pct = Math.round(minB + ratio * (maxB - minB));
       this._liveBrightness = pct;
-      this._throttledCall({
-        entity_id: this._getTargetEntityId(),
-        brightness_pct: pct
-      });
+      this._liveIsOn = pct > 0;
     } else if (mode === "temp") {
       const kelvin = Math.round(data.minKelvin + ratio * (data.maxKelvin - data.minKelvin));
       this._liveKelvin = kelvin;
-      this._throttledCall({
-        entity_id: this._getTargetEntityId(),
-        color_temp_kelvin: kelvin
-      });
+      this._liveIsOn = true;
     } else if (mode === "color") {
       const hue = Math.round(ratio * 360) % 360;
       const rgb = hsvToRgb(hue, 100, 100);
       this._liveHue = hue;
       this._liveRgb = rgb;
-      this._throttledCall({
-        entity_id: this._getTargetEntityId(),
-        rgb_color: [rgb.r, rgb.g, rgb.b]
-      });
+      this._liveIsOn = true;
     }
   }
 
@@ -1275,11 +1301,17 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     this._mode = mode;
     const data = this._getLightData();
 
+    if (this._optimisticTimer) {
+      clearTimeout(this._optimisticTimer);
+      this._optimisticTimer = null;
+    }
+
     if (mode === "brightness") {
       const minB = this._config?.min_brightness ?? 0;
       const maxB = this._config?.max_brightness ?? 100;
       const pct = Math.round(minB + ratio * (maxB - minB));
-      this._liveBrightness = null;
+      this._liveBrightness = pct;
+      this._liveIsOn = pct > 0;
 
       if (this.hass && this._config) {
         if (pct === 0) {
@@ -1293,7 +1325,8 @@ export class HaLightCard extends LitElement implements LovelaceCard {
       }
     } else if (mode === "temp") {
       const kelvin = Math.round(data.minKelvin + ratio * (data.maxKelvin - data.minKelvin));
-      this._liveKelvin = null;
+      this._liveKelvin = kelvin;
+      this._liveIsOn = true;
       if (this.hass && this._config) {
         this.hass.callService("light", "turn_on", {
           entity_id: this._getTargetEntityId(),
@@ -1303,8 +1336,9 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     } else if (mode === "color") {
       const hue = Math.round(ratio * 360) % 360;
       const rgb = hsvToRgb(hue, 100, 100);
-      this._liveHue = null;
-      this._liveRgb = null;
+      this._liveHue = hue;
+      this._liveRgb = rgb;
+      this._liveIsOn = true;
       if (this.hass && this._config) {
         this.hass.callService("light", "turn_on", {
           entity_id: this._getTargetEntityId(),
@@ -1312,16 +1346,18 @@ export class HaLightCard extends LitElement implements LovelaceCard {
         });
       }
     }
+
+    // Keep the released value held briefly until Home Assistant finishes applying the update
+    this._optimisticTimer = setTimeout(() => {
+      this._clearLiveState();
+    }, 1500);
   }
 
   private _applyPreset(preset: PresetConfig): void {
     if (!this.hass || !this._config) return;
 
     this._isDragging = false;
-    this._liveBrightness = null;
-    this._liveKelvin = null;
-    this._liveHue = null;
-    this._liveRgb = null;
+    this._clearLiveState();
 
     if (preset.scene) {
       this.hass.callService("scene", "turn_on", { entity_id: preset.scene });
@@ -1439,7 +1475,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
   private _applyBrightnessSubpreset(value: number): void {
     if (!this.hass || !this._config) return;
     this._isDragging = false;
-    this._liveBrightness = null;
+    this._clearLiveState();
     if (value === 0) {
       this.hass.callService("light", "turn_off", { entity_id: this._getTargetEntityId() });
     } else {
@@ -1453,7 +1489,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
   private _applyTempSubpreset(kelvin: number): void {
     if (!this.hass || !this._config) return;
     this._isDragging = false;
-    this._liveKelvin = null;
+    this._clearLiveState();
     this.hass.callService("light", "turn_on", {
       entity_id: this._getTargetEntityId(),
       color_temp_kelvin: kelvin
@@ -1463,8 +1499,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
   private _applyColorSubpreset(hexColor: string): void {
     if (!this.hass || !this._config) return;
     this._isDragging = false;
-    this._liveRgb = null;
-    this._liveHue = null;
+    this._clearLiveState();
     const rgb = parseColorInput(hexColor);
     if (rgb) {
       this.hass.callService("light", "turn_on", {
@@ -2363,17 +2398,19 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     const maxB = this._config.max_brightness ?? 100;
     const maxRows = Math.max(1, this._config.preset_max_rows ?? 3);
 
+    const effectiveIsOn = this._liveIsOn !== null ? this._liveIsOn : data.isOn;
     const currentBrightness =
-      this._isDragging && this._liveBrightness !== null ? this._liveBrightness : data.brightnessPct;
+      this._liveBrightness !== null ? this._liveBrightness : data.brightnessPct;
     const currentKelvin =
-      this._isDragging && this._liveKelvin !== null ? this._liveKelvin : data.kelvin;
+      this._liveKelvin !== null ? this._liveKelvin : data.kelvin;
     const currentHue =
-      this._isDragging && this._liveHue !== null ? this._liveHue : data.hue;
+      this._liveHue !== null ? this._liveHue : data.hue;
     const currentRgb =
-      this._isDragging && this._liveRgb !== null ? this._liveRgb : data.rgb;
+      this._liveRgb !== null ? this._liveRgb : data.rgb;
 
     const currentData = {
       ...data,
+      isOn: effectiveIsOn,
       brightnessPct: currentBrightness,
       kelvin: currentKelvin,
       rgb: currentRgb
@@ -2411,7 +2448,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
 
     const subtitleText = formatSubtitle(
       effectiveMode,
-      data.isOn,
+      effectiveIsOn,
       this._isDragging,
       currentBrightness,
       currentKelvin,
@@ -2436,7 +2473,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     const hasAnyModeButtons = showBrightnessBtn || showTempBtn || showColorBtn;
 
     // Brightness slider fill color: fixed warm amber/peach when on, dark amber/brown when off (does not change based on light color)
-    const fillColor = data.isOn ? "#f8a555" : "#4a3c30";
+    const fillColor = effectiveIsOn ? "#f8a555" : "#4a3c30";
 
     const shouldHighlightModeButtons =
       this._config.highlight_mode_buttons !== false &&
@@ -2447,7 +2484,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     let brightnessBtnBorder = "";
     let brightnessBtnColor = "";
     let brightnessBtnShadow = "";
-    if (shouldHighlightModeButtons && data.isOn) {
+    if (shouldHighlightModeButtons && effectiveIsOn) {
       const bRatio = Math.max(0.01, Math.min(1, currentBrightness / 100));
       brightnessBtnBg = `rgba(245, 158, 11, ${0.08 + bRatio * 0.32})`;
       brightnessBtnBorder = `rgba(245, 158, 11, ${0.20 + bRatio * 0.45})`;
@@ -2460,7 +2497,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     let tempBtnBorder = "";
     let tempBtnColor = "";
     let tempBtnShadow = "";
-    if (shouldHighlightModeButtons && data.isOn && data.supportsTemp) {
+    if (shouldHighlightModeButtons && effectiveIsOn && data.supportsTemp) {
       const tempRgb = kelvinToRgb(currentKelvin, data.minKelvin, data.maxKelvin);
       tempBtnBg = `rgba(${tempRgb.r}, ${tempRgb.g}, ${tempRgb.b}, 0.20)`;
       tempBtnBorder = `rgba(${tempRgb.r}, ${tempRgb.g}, ${tempRgb.b}, 0.45)`;
@@ -2473,7 +2510,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     let colorBtnBorder = "";
     let colorBtnColor = "";
     let colorBtnShadow = "";
-    if (shouldHighlightModeButtons && data.isOn && data.supportsColor) {
+    if (shouldHighlightModeButtons && effectiveIsOn && data.supportsColor) {
       const activeRgb = currentRgb || data.rgb || { r: 255, g: 160, b: 64 };
       colorBtnBg = `rgba(${activeRgb.r}, ${activeRgb.g}, ${activeRgb.b}, 0.22)`;
       colorBtnBorder = `rgba(${activeRgb.r}, ${activeRgb.g}, ${activeRgb.b}, 0.50)`;
@@ -2489,7 +2526,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
           <div class="header-left">
             <div
               class="main-icon-wrap"
-              style="color: ${data.isOn ? 'var(--primary-text)' : 'var(--secondary-text)'};"
+              style="color: ${effectiveIsOn ? 'var(--primary-text)' : 'var(--secondary-text)'};"
               @click=${this._fireMoreInfo}
             >
               ${renderIcon(iconPath, ICONS.bed, 28)}
@@ -2533,7 +2570,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
               : null}
             <ha-light-action-button
               variant="power"
-              ?active=${data.isOn}
+              ?active=${effectiveIsOn}
               @click=${this._togglePower}
               title="Power Toggle"
             >
@@ -2559,7 +2596,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
                           .minKelvin=${data.minKelvin}
                           .maxKelvin=${data.maxKelvin}
                           .hue=${currentHue}
-                          .isOn=${data.isOn}
+                          .isOn=${effectiveIsOn}
                           .fillColor=${fillColor}
                           @slider-input=${this._onSliderInput}
                           @slider-change=${this._onSliderChange}
@@ -2580,7 +2617,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
                           .minKelvin=${data.minKelvin}
                           .maxKelvin=${data.maxKelvin}
                           .hue=${currentHue}
-                          .isOn=${data.isOn}
+                          .isOn=${effectiveIsOn}
                           .fillColor=${fillColor}
                           @slider-input=${this._onSliderInput}
                           @slider-change=${this._onSliderChange}
@@ -2601,7 +2638,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
                           .minKelvin=${data.minKelvin}
                           .maxKelvin=${data.maxKelvin}
                           .hue=${currentHue}
-                          .isOn=${data.isOn}
+                          .isOn=${effectiveIsOn}
                           .fillColor=${fillColor}
                           @slider-input=${this._onSliderInput}
                           @slider-change=${this._onSliderChange}
@@ -2624,7 +2661,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
                   .minKelvin=${data.minKelvin}
                   .maxKelvin=${data.maxKelvin}
                   .hue=${currentHue}
-                  .isOn=${data.isOn}
+                  .isOn=${effectiveIsOn}
                   .fillColor=${fillColor}
                   @slider-input=${this._onSliderInput}
                   @slider-change=${this._onSliderChange}

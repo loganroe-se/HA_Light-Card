@@ -53,7 +53,7 @@ This is almost 100% AI-written, human-tested code.
   - **Temperature Mode**: Warm-to-cool Kelvin gradient track with a white capsule indicator.
   - **Color Mode**: Full 360-degree rainbow hue gradient with real-time RGB color indicator.
   - Bulletproof window-level pointer event listeners preventing slider lockup.
-  - Throttled service calls (120ms) during dragging for zero-latency UI while protecting Zigbee/Z-Wave networks.
+  - **Commit-on-Release Updates**: Smooth 60fps local preview while dragging, sending a single Home Assistant service call only on release (mouseup/touchend) with optimistic value hold to eliminate slider jumping.
 - **Smart Quick-Swap Mode Buttons**:
   - By default (`show_all_mode_buttons: false`), the active mode's button is hidden to save space (matching the bottom reference card: in Brightness mode, only Temp & Color buttons are shown; in Temp mode, only Brightness & Color buttons are shown).
   - Can optionally show all 3 buttons simultaneously (`show_all_mode_buttons: true`).

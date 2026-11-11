@@ -3,8 +3,8 @@
  * Copyright 2019 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Ct = globalThis, Ot = Ct.ShadowRoot && (Ct.ShadyCSS === void 0 || Ct.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, Ht = Symbol(), Gt = /* @__PURE__ */ new WeakMap();
-let re = class {
+const Ct = globalThis, Ot = Ct.ShadowRoot && (Ct.ShadyCSS === void 0 || Ct.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, Ht = Symbol(), Yt = /* @__PURE__ */ new WeakMap();
+let ae = class {
   constructor(t, i, s) {
     if (this._$cssResult$ = !0, s !== Ht) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
     this.cssText = t, this.t = i;
@@ -14,7 +14,7 @@ let re = class {
     const i = this.t;
     if (Ot && t === void 0) {
       const s = i !== void 0 && i.length === 1;
-      s && (t = Gt.get(i)), t === void 0 && ((this.o = t = new CSSStyleSheet()).replaceSync(this.cssText), s && Gt.set(i, t));
+      s && (t = Yt.get(i)), t === void 0 && ((this.o = t = new CSSStyleSheet()).replaceSync(this.cssText), s && Yt.set(i, t));
     }
     return t;
   }
@@ -22,33 +22,33 @@ let re = class {
     return this.cssText;
   }
 };
-const me = (e) => new re(typeof e == "string" ? e : e + "", void 0, Ht), rt = (e, ...t) => {
+const ve = (e) => new ae(typeof e == "string" ? e : e + "", void 0, Ht), rt = (e, ...t) => {
   const i = e.length === 1 ? e[0] : t.reduce((s, o, n) => s + ((r) => {
     if (r._$cssResult$ === !0) return r.cssText;
     if (typeof r == "number") return r;
     throw Error("Value passed to 'css' function must be a 'css' function result: " + r + ". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.");
   })(o) + e[n + 1], e[0]);
-  return new re(i, e, Ht);
-}, ve = (e, t) => {
+  return new ae(i, e, Ht);
+}, xe = (e, t) => {
   if (Ot) e.adoptedStyleSheets = t.map((i) => i instanceof CSSStyleSheet ? i : i.styleSheet);
   else for (const i of t) {
     const s = document.createElement("style"), o = Ct.litNonce;
     o !== void 0 && s.setAttribute("nonce", o), s.textContent = i.cssText, e.appendChild(s);
   }
-}, Yt = Ot ? (e) => e : (e) => e instanceof CSSStyleSheet ? ((t) => {
+}, Xt = Ot ? (e) => e : (e) => e instanceof CSSStyleSheet ? ((t) => {
   let i = "";
   for (const s of t.cssRules) i += s.cssText;
-  return me(i);
+  return ve(i);
 })(e) : e;
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const { is: ye, defineProperty: xe, getOwnPropertyDescriptor: we, getOwnPropertyNames: $e, getOwnPropertySymbols: Se, getPrototypeOf: Ee } = Object, Pt = globalThis, Xt = Pt.trustedTypes, Ae = Xt ? Xt.emptyScript : "", ke = Pt.reactiveElementPolyfillSupport, ut = (e, t) => e, Bt = { toAttribute(e, t) {
+const { is: ye, defineProperty: we, getOwnPropertyDescriptor: $e, getOwnPropertyNames: Se, getOwnPropertySymbols: Ee, getPrototypeOf: Ae } = Object, Pt = globalThis, Zt = Pt.trustedTypes, ke = Zt ? Zt.emptyScript : "", Ce = Pt.reactiveElementPolyfillSupport, ut = (e, t) => e, Bt = { toAttribute(e, t) {
   switch (t) {
     case Boolean:
-      e = e ? Ae : null;
+      e = e ? ke : null;
       break;
     case Object:
     case Array:
@@ -73,7 +73,7 @@ const { is: ye, defineProperty: xe, getOwnPropertyDescriptor: we, getOwnProperty
       }
   }
   return i;
-} }, zt = (e, t) => !ye(e, t), Zt = { attribute: !0, type: String, converter: Bt, reflect: !1, useDefault: !1, hasChanged: zt };
+} }, zt = (e, t) => !ye(e, t), Jt = { attribute: !0, type: String, converter: Bt, reflect: !1, useDefault: !1, hasChanged: zt };
 Symbol.metadata ??= Symbol("metadata"), Pt.litPropertyMetadata ??= /* @__PURE__ */ new WeakMap();
 let st = class extends HTMLElement {
   static addInitializer(t) {
@@ -82,14 +82,14 @@ let st = class extends HTMLElement {
   static get observedAttributes() {
     return this.finalize(), this._$Eh && [...this._$Eh.keys()];
   }
-  static createProperty(t, i = Zt) {
+  static createProperty(t, i = Jt) {
     if (i.state && (i.attribute = !1), this._$Ei(), this.prototype.hasOwnProperty(t) && ((i = Object.create(i)).wrapped = !0), this.elementProperties.set(t, i), !i.noAccessor) {
       const s = Symbol(), o = this.getPropertyDescriptor(t, s, i);
-      o !== void 0 && xe(this.prototype, t, o);
+      o !== void 0 && we(this.prototype, t, o);
     }
   }
   static getPropertyDescriptor(t, i, s) {
-    const { get: o, set: n } = we(this.prototype, t) ?? { get() {
+    const { get: o, set: n } = $e(this.prototype, t) ?? { get() {
       return this[i];
     }, set(r) {
       this[i] = r;
@@ -100,17 +100,17 @@ let st = class extends HTMLElement {
     }, configurable: !0, enumerable: !0 };
   }
   static getPropertyOptions(t) {
-    return this.elementProperties.get(t) ?? Zt;
+    return this.elementProperties.get(t) ?? Jt;
   }
   static _$Ei() {
     if (this.hasOwnProperty(ut("elementProperties"))) return;
-    const t = Ee(this);
+    const t = Ae(this);
     t.finalize(), t.l !== void 0 && (this.l = [...t.l]), this.elementProperties = new Map(t.elementProperties);
   }
   static finalize() {
     if (this.hasOwnProperty(ut("finalized"))) return;
     if (this.finalized = !0, this._$Ei(), this.hasOwnProperty(ut("properties"))) {
-      const i = this.properties, s = [...$e(i), ...Se(i)];
+      const i = this.properties, s = [...Se(i), ...Ee(i)];
       for (const o of s) this.createProperty(o, i[o]);
     }
     const t = this[Symbol.metadata];
@@ -129,8 +129,8 @@ let st = class extends HTMLElement {
     const i = [];
     if (Array.isArray(t)) {
       const s = new Set(t.flat(1 / 0).reverse());
-      for (const o of s) i.unshift(Yt(o));
-    } else t !== void 0 && i.push(Yt(t));
+      for (const o of s) i.unshift(Xt(o));
+    } else t !== void 0 && i.push(Xt(t));
     return i;
   }
   static _$Eu(t, i) {
@@ -156,7 +156,7 @@ let st = class extends HTMLElement {
   }
   createRenderRoot() {
     const t = this.shadowRoot ?? this.attachShadow(this.constructor.shadowRootOptions);
-    return ve(t, this.constructor.elementStyles), t;
+    return xe(t, this.constructor.elementStyles), t;
   }
   connectedCallback() {
     this.renderRoot ??= this.createRenderRoot(), this.enableUpdating(!0), this._$EO?.forEach((t) => t.hostConnected?.());
@@ -256,65 +256,65 @@ let st = class extends HTMLElement {
   firstUpdated(t) {
   }
 };
-st.elementStyles = [], st.shadowRootOptions = { mode: "open" }, st[ut("elementProperties")] = /* @__PURE__ */ new Map(), st[ut("finalized")] = /* @__PURE__ */ new Map(), ke?.({ ReactiveElement: st }), (Pt.reactiveElementVersions ??= []).push("2.1.2");
+st.elementStyles = [], st.shadowRootOptions = { mode: "open" }, st[ut("elementProperties")] = /* @__PURE__ */ new Map(), st[ut("finalized")] = /* @__PURE__ */ new Map(), Ce?.({ ReactiveElement: st }), (Pt.reactiveElementVersions ??= []).push("2.1.2");
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Nt = globalThis, Jt = (e) => e, Tt = Nt.trustedTypes, Qt = Tt ? Tt.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, ae = "$lit$", F = `lit$${Math.random().toFixed(9).slice(2)}$`, le = "?" + F, Ce = `<${le}>`, J = document, bt = () => J.createComment(""), _t = (e) => e === null || typeof e != "object" && typeof e != "function", Ut = Array.isArray, Me = (e) => Ut(e) || typeof e?.[Symbol.iterator] == "function", Rt = `[ 	
-\f\r]`, pt = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, te = /-->/g, ee = />/g, X = RegExp(`>|${Rt}(?:([^\\s"'>=/]+)(${Rt}*=${Rt}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), ie = /'/g, se = /"/g, ce = /^(?:script|style|textarea|title)$/i, Be = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), c = Be(1), ot = Symbol.for("lit-noChange"), A = Symbol.for("lit-nothing"), oe = /* @__PURE__ */ new WeakMap(), Z = J.createTreeWalker(J, 129);
-function he(e, t) {
+const Nt = globalThis, Qt = (e) => e, Tt = Nt.trustedTypes, te = Tt ? Tt.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, le = "$lit$", K = `lit$${Math.random().toFixed(9).slice(2)}$`, ce = "?" + K, Me = `<${ce}>`, X = document, bt = () => X.createComment(""), _t = (e) => e === null || typeof e != "object" && typeof e != "function", Ut = Array.isArray, Be = (e) => Ut(e) || typeof e?.[Symbol.iterator] == "function", Lt = `[ 	
+\f\r]`, pt = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, ee = /-->/g, ie = />/g, G = RegExp(`>|${Lt}(?:([^\\s"'>=/]+)(${Lt}*=${Lt}*(?:[^ 	
+\f\r"'\`<>=]|("|')|))|$)`, "g"), se = /'/g, oe = /"/g, he = /^(?:script|style|textarea|title)$/i, Te = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), c = Te(1), ot = Symbol.for("lit-noChange"), k = Symbol.for("lit-nothing"), ne = /* @__PURE__ */ new WeakMap(), Y = X.createTreeWalker(X, 129);
+function de(e, t) {
   if (!Ut(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
-  return Qt !== void 0 ? Qt.createHTML(t) : t;
+  return te !== void 0 ? te.createHTML(t) : t;
 }
-const Te = (e, t) => {
+const Pe = (e, t) => {
   const i = e.length - 1, s = [];
   let o, n = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", r = pt;
   for (let a = 0; a < i; a++) {
     const l = e[a];
-    let h, d, p = -1, g = 0;
-    for (; g < l.length && (r.lastIndex = g, d = r.exec(l), d !== null); ) g = r.lastIndex, r === pt ? d[1] === "!--" ? r = te : d[1] !== void 0 ? r = ee : d[2] !== void 0 ? (ce.test(d[2]) && (o = RegExp("</" + d[2], "g")), r = X) : d[3] !== void 0 && (r = X) : r === X ? d[0] === ">" ? (r = o ?? pt, p = -1) : d[1] === void 0 ? p = -2 : (p = r.lastIndex - d[2].length, h = d[1], r = d[3] === void 0 ? X : d[3] === '"' ? se : ie) : r === se || r === ie ? r = X : r === te || r === ee ? r = pt : (r = X, o = void 0);
-    const _ = r === X && e[a + 1].startsWith("/>") ? " " : "";
-    n += r === pt ? l + Ce : p >= 0 ? (s.push(h), l.slice(0, p) + ae + l.slice(p) + F + _) : l + F + (p === -2 ? a : _);
+    let h, p, d = -1, g = 0;
+    for (; g < l.length && (r.lastIndex = g, p = r.exec(l), p !== null); ) g = r.lastIndex, r === pt ? p[1] === "!--" ? r = ee : p[1] !== void 0 ? r = ie : p[2] !== void 0 ? (he.test(p[2]) && (o = RegExp("</" + p[2], "g")), r = G) : p[3] !== void 0 && (r = G) : r === G ? p[0] === ">" ? (r = o ?? pt, d = -1) : p[1] === void 0 ? d = -2 : (d = r.lastIndex - p[2].length, h = p[1], r = p[3] === void 0 ? G : p[3] === '"' ? oe : se) : r === oe || r === se ? r = G : r === ee || r === ie ? r = pt : (r = G, o = void 0);
+    const _ = r === G && e[a + 1].startsWith("/>") ? " " : "";
+    n += r === pt ? l + Me : d >= 0 ? (s.push(h), l.slice(0, d) + le + l.slice(d) + K + _) : l + K + (d === -2 ? a : _);
   }
-  return [he(e, n + (e[i] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), s];
+  return [de(e, n + (e[i] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), s];
 };
 class mt {
   constructor({ strings: t, _$litType$: i }, s) {
     let o;
     this.parts = [];
     let n = 0, r = 0;
-    const a = t.length - 1, l = this.parts, [h, d] = Te(t, i);
-    if (this.el = mt.createElement(h, s), Z.currentNode = this.el.content, i === 2 || i === 3) {
-      const p = this.el.content.firstChild;
-      p.replaceWith(...p.childNodes);
+    const a = t.length - 1, l = this.parts, [h, p] = Pe(t, i);
+    if (this.el = mt.createElement(h, s), Y.currentNode = this.el.content, i === 2 || i === 3) {
+      const d = this.el.content.firstChild;
+      d.replaceWith(...d.childNodes);
     }
-    for (; (o = Z.nextNode()) !== null && l.length < a; ) {
+    for (; (o = Y.nextNode()) !== null && l.length < a; ) {
       if (o.nodeType === 1) {
-        if (o.hasAttributes()) for (const p of o.getAttributeNames()) if (p.endsWith(ae)) {
-          const g = d[r++], _ = o.getAttribute(p).split(F), b = /([.?@])?(.*)/.exec(g);
-          l.push({ type: 1, index: n, name: b[2], strings: _, ctor: b[1] === "." ? Ie : b[1] === "?" ? Re : b[1] === "@" ? Le : It }), o.removeAttribute(p);
-        } else p.startsWith(F) && (l.push({ type: 6, index: n }), o.removeAttribute(p));
-        if (ce.test(o.tagName)) {
-          const p = o.textContent.split(F), g = p.length - 1;
+        if (o.hasAttributes()) for (const d of o.getAttributeNames()) if (d.endsWith(le)) {
+          const g = p[r++], _ = o.getAttribute(d).split(K), b = /([.?@])?(.*)/.exec(g);
+          l.push({ type: 1, index: n, name: b[2], strings: _, ctor: b[1] === "." ? Le : b[1] === "?" ? Re : b[1] === "@" ? De : It }), o.removeAttribute(d);
+        } else d.startsWith(K) && (l.push({ type: 6, index: n }), o.removeAttribute(d));
+        if (he.test(o.tagName)) {
+          const d = o.textContent.split(K), g = d.length - 1;
           if (g > 0) {
             o.textContent = Tt ? Tt.emptyScript : "";
-            for (let _ = 0; _ < g; _++) o.append(p[_], bt()), Z.nextNode(), l.push({ type: 2, index: ++n });
-            o.append(p[g], bt());
+            for (let _ = 0; _ < g; _++) o.append(d[_], bt()), Y.nextNode(), l.push({ type: 2, index: ++n });
+            o.append(d[g], bt());
           }
         }
-      } else if (o.nodeType === 8) if (o.data === le) l.push({ type: 2, index: n });
+      } else if (o.nodeType === 8) if (o.data === ce) l.push({ type: 2, index: n });
       else {
-        let p = -1;
-        for (; (p = o.data.indexOf(F, p + 1)) !== -1; ) l.push({ type: 7, index: n }), p += F.length - 1;
+        let d = -1;
+        for (; (d = o.data.indexOf(K, d + 1)) !== -1; ) l.push({ type: 7, index: n }), d += K.length - 1;
       }
       n++;
     }
   }
   static createElement(t, i) {
-    const s = J.createElement("template");
+    const s = X.createElement("template");
     return s.innerHTML = t, s;
   }
 }
@@ -324,7 +324,7 @@ function nt(e, t, i = e, s) {
   const n = _t(t) ? void 0 : t._$litDirective$;
   return o?.constructor !== n && (o?._$AO?.(!1), n === void 0 ? o = void 0 : (o = new n(e), o._$AT(e, i, s)), s !== void 0 ? (i._$Co ??= [])[s] = o : i._$Cl = o), o !== void 0 && (t = nt(e, o._$AS(e, t.values), o, s)), t;
 }
-class Pe {
+class Ie {
   constructor(t, i) {
     this._$AV = [], this._$AN = void 0, this._$AD = t, this._$AM = i;
   }
@@ -335,29 +335,29 @@ class Pe {
     return this._$AM._$AU;
   }
   u(t) {
-    const { el: { content: i }, parts: s } = this._$AD, o = (t?.creationScope ?? J).importNode(i, !0);
-    Z.currentNode = o;
-    let n = Z.nextNode(), r = 0, a = 0, l = s[0];
+    const { el: { content: i }, parts: s } = this._$AD, o = (t?.creationScope ?? X).importNode(i, !0);
+    Y.currentNode = o;
+    let n = Y.nextNode(), r = 0, a = 0, l = s[0];
     for (; l !== void 0; ) {
       if (r === l.index) {
         let h;
-        l.type === 2 ? h = new yt(n, n.nextSibling, this, t) : l.type === 1 ? h = new l.ctor(n, l.name, l.strings, this, t) : l.type === 6 && (h = new De(n, this, t)), this._$AV.push(h), l = s[++a];
+        l.type === 2 ? h = new xt(n, n.nextSibling, this, t) : l.type === 1 ? h = new l.ctor(n, l.name, l.strings, this, t) : l.type === 6 && (h = new Oe(n, this, t)), this._$AV.push(h), l = s[++a];
       }
-      r !== l?.index && (n = Z.nextNode(), r++);
+      r !== l?.index && (n = Y.nextNode(), r++);
     }
-    return Z.currentNode = J, o;
+    return Y.currentNode = X, o;
   }
   p(t) {
     let i = 0;
     for (const s of this._$AV) s !== void 0 && (s.strings !== void 0 ? (s._$AI(t, s, i), i += s.strings.length - 2) : s._$AI(t[i])), i++;
   }
 }
-class yt {
+class xt {
   get _$AU() {
     return this._$AM?._$AU ?? this._$Cv;
   }
   constructor(t, i, s, o) {
-    this.type = 2, this._$AH = A, this._$AN = void 0, this._$AA = t, this._$AB = i, this._$AM = s, this.options = o, this._$Cv = o?.isConnected ?? !0;
+    this.type = 2, this._$AH = k, this._$AN = void 0, this._$AA = t, this._$AB = i, this._$AM = s, this.options = o, this._$Cv = o?.isConnected ?? !0;
   }
   get parentNode() {
     let t = this._$AA.parentNode;
@@ -371,7 +371,7 @@ class yt {
     return this._$AB;
   }
   _$AI(t, i = this) {
-    t = nt(this, t, i), _t(t) ? t === A || t == null || t === "" ? (this._$AH !== A && this._$AR(), this._$AH = A) : t !== this._$AH && t !== ot && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : Me(t) ? this.k(t) : this._(t);
+    t = nt(this, t, i), _t(t) ? t === k || t == null || t === "" ? (this._$AH !== k && this._$AR(), this._$AH = k) : t !== this._$AH && t !== ot && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : Be(t) ? this.k(t) : this._(t);
   }
   O(t) {
     return this._$AA.parentNode.insertBefore(t, this._$AB);
@@ -380,31 +380,31 @@ class yt {
     this._$AH !== t && (this._$AR(), this._$AH = this.O(t));
   }
   _(t) {
-    this._$AH !== A && _t(this._$AH) ? this._$AA.nextSibling.data = t : this.T(J.createTextNode(t)), this._$AH = t;
+    this._$AH !== k && _t(this._$AH) ? this._$AA.nextSibling.data = t : this.T(X.createTextNode(t)), this._$AH = t;
   }
   $(t) {
-    const { values: i, _$litType$: s } = t, o = typeof s == "number" ? this._$AC(t) : (s.el === void 0 && (s.el = mt.createElement(he(s.h, s.h[0]), this.options)), s);
+    const { values: i, _$litType$: s } = t, o = typeof s == "number" ? this._$AC(t) : (s.el === void 0 && (s.el = mt.createElement(de(s.h, s.h[0]), this.options)), s);
     if (this._$AH?._$AD === o) this._$AH.p(i);
     else {
-      const n = new Pe(o, this), r = n.u(this.options);
+      const n = new Ie(o, this), r = n.u(this.options);
       n.p(i), this.T(r), this._$AH = n;
     }
   }
   _$AC(t) {
-    let i = oe.get(t.strings);
-    return i === void 0 && oe.set(t.strings, i = new mt(t)), i;
+    let i = ne.get(t.strings);
+    return i === void 0 && ne.set(t.strings, i = new mt(t)), i;
   }
   k(t) {
     Ut(this._$AH) || (this._$AH = [], this._$AR());
     const i = this._$AH;
     let s, o = 0;
-    for (const n of t) o === i.length ? i.push(s = new yt(this.O(bt()), this.O(bt()), this, this.options)) : s = i[o], s._$AI(n), o++;
+    for (const n of t) o === i.length ? i.push(s = new xt(this.O(bt()), this.O(bt()), this, this.options)) : s = i[o], s._$AI(n), o++;
     o < i.length && (this._$AR(s && s._$AB.nextSibling, o), i.length = o);
   }
   _$AR(t = this._$AA.nextSibling, i) {
     for (this._$AP?.(!1, !0, i); t !== this._$AB; ) {
-      const s = Jt(t).nextSibling;
-      Jt(t).remove(), t = s;
+      const s = Qt(t).nextSibling;
+      Qt(t).remove(), t = s;
     }
   }
   setConnected(t) {
@@ -419,7 +419,7 @@ class It {
     return this._$AM._$AU;
   }
   constructor(t, i, s, o, n) {
-    this.type = 1, this._$AH = A, this._$AN = void 0, this.element = t, this.name = i, this._$AM = o, this.options = n, s.length > 2 || s[0] !== "" || s[1] !== "" ? (this._$AH = Array(s.length - 1).fill(new String()), this.strings = s) : this._$AH = A;
+    this.type = 1, this._$AH = k, this._$AN = void 0, this.element = t, this.name = i, this._$AM = o, this.options = n, s.length > 2 || s[0] !== "" || s[1] !== "" ? (this._$AH = Array(s.length - 1).fill(new String()), this.strings = s) : this._$AH = k;
   }
   _$AI(t, i = this, s, o) {
     const n = this.strings;
@@ -428,20 +428,20 @@ class It {
     else {
       const a = t;
       let l, h;
-      for (t = n[0], l = 0; l < n.length - 1; l++) h = nt(this, a[s + l], i, l), h === ot && (h = this._$AH[l]), r ||= !_t(h) || h !== this._$AH[l], h === A ? t = A : t !== A && (t += (h ?? "") + n[l + 1]), this._$AH[l] = h;
+      for (t = n[0], l = 0; l < n.length - 1; l++) h = nt(this, a[s + l], i, l), h === ot && (h = this._$AH[l]), r ||= !_t(h) || h !== this._$AH[l], h === k ? t = k : t !== k && (t += (h ?? "") + n[l + 1]), this._$AH[l] = h;
     }
     r && !o && this.j(t);
   }
   j(t) {
-    t === A ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, t ?? "");
+    t === k ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, t ?? "");
   }
 }
-class Ie extends It {
+class Le extends It {
   constructor() {
     super(...arguments), this.type = 3;
   }
   j(t) {
-    this.element[this.name] = t === A ? void 0 : t;
+    this.element[this.name] = t === k ? void 0 : t;
   }
 }
 class Re extends It {
@@ -449,23 +449,23 @@ class Re extends It {
     super(...arguments), this.type = 4;
   }
   j(t) {
-    this.element.toggleAttribute(this.name, !!t && t !== A);
+    this.element.toggleAttribute(this.name, !!t && t !== k);
   }
 }
-class Le extends It {
+class De extends It {
   constructor(t, i, s, o, n) {
     super(t, i, s, o, n), this.type = 5;
   }
   _$AI(t, i = this) {
-    if ((t = nt(this, t, i, 0) ?? A) === ot) return;
-    const s = this._$AH, o = t === A && s !== A || t.capture !== s.capture || t.once !== s.once || t.passive !== s.passive, n = t !== A && (s === A || o);
+    if ((t = nt(this, t, i, 0) ?? k) === ot) return;
+    const s = this._$AH, o = t === k && s !== k || t.capture !== s.capture || t.once !== s.once || t.passive !== s.passive, n = t !== k && (s === k || o);
     o && this.element.removeEventListener(this.name, this, s), n && this.element.addEventListener(this.name, this, t), this._$AH = t;
   }
   handleEvent(t) {
     typeof this._$AH == "function" ? this._$AH.call(this.options?.host ?? this.element, t) : this._$AH.handleEvent(t);
   }
 }
-class De {
+class Oe {
   constructor(t, i, s) {
     this.element = t, this.type = 6, this._$AN = void 0, this._$AM = i, this.options = s;
   }
@@ -476,14 +476,14 @@ class De {
     nt(this, t);
   }
 }
-const Oe = Nt.litHtmlPolyfillSupport;
-Oe?.(mt, yt), (Nt.litHtmlVersions ??= []).push("3.3.3");
-const He = (e, t, i) => {
+const He = Nt.litHtmlPolyfillSupport;
+He?.(mt, xt), (Nt.litHtmlVersions ??= []).push("3.3.3");
+const ze = (e, t, i) => {
   const s = i?.renderBefore ?? t;
   let o = s._$litPart$;
   if (o === void 0) {
     const n = i?.renderBefore ?? null;
-    s._$litPart$ = o = new yt(t.insertBefore(bt(), n), n, void 0, i ?? {});
+    s._$litPart$ = o = new xt(t.insertBefore(bt(), n), n, void 0, i ?? {});
   }
   return o._$AI(e), o;
 };
@@ -493,7 +493,7 @@ const He = (e, t, i) => {
  * SPDX-License-Identifier: BSD-3-Clause
  */
 const Ft = globalThis;
-class R extends st {
+class I extends st {
   constructor() {
     super(...arguments), this.renderOptions = { host: this }, this._$Do = void 0;
   }
@@ -503,7 +503,7 @@ class R extends st {
   }
   update(t) {
     const i = this.render();
-    this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(t), this._$Do = He(i, this.renderRoot, this.renderOptions);
+    this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(t), this._$Do = ze(i, this.renderRoot, this.renderOptions);
   }
   connectedCallback() {
     super.connectedCallback(), this._$Do?.setConnected(!0);
@@ -515,9 +515,9 @@ class R extends st {
     return ot;
   }
 }
-R._$litElement$ = !0, R.finalized = !0, Ft.litElementHydrateSupport?.({ LitElement: R });
-const ze = Ft.litElementPolyfillSupport;
-ze?.({ LitElement: R });
+I._$litElement$ = !0, I.finalized = !0, Ft.litElementHydrateSupport?.({ LitElement: I });
+const Ne = Ft.litElementPolyfillSupport;
+Ne?.({ LitElement: I });
 (Ft.litElementVersions ??= []).push("4.2.2");
 /**
  * @license
@@ -534,7 +534,7 @@ const at = (e) => (t, i) => {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Ne = { attribute: !0, type: String, converter: Bt, reflect: !1, hasChanged: zt }, Ue = (e = Ne, t, i) => {
+const Ue = { attribute: !0, type: String, converter: Bt, reflect: !1, hasChanged: zt }, Fe = (e = Ue, t, i) => {
   const { kind: s, metadata: o } = i;
   let n = globalThis.litPropertyMetadata.get(o);
   if (n === void 0 && globalThis.litPropertyMetadata.set(o, n = /* @__PURE__ */ new Map()), s === "setter" && ((e = Object.create(e)).wrapped = !0), n.set(i.name, e), s === "accessor") {
@@ -556,7 +556,7 @@ const Ne = { attribute: !0, type: String, converter: Bt, reflect: !1, hasChanged
   throw Error("Unsupported decorator location: " + s);
 };
 function m(e) {
-  return (t, i) => typeof i == "object" ? Ue(e, t, i) : ((s, o, n) => {
+  return (t, i) => typeof i == "object" ? Fe(e, t, i) : ((s, o, n) => {
     const r = o.hasOwnProperty(n);
     return o.constructor.createProperty(n, s), r ? Object.getOwnPropertyDescriptor(o, n) : void 0;
   })(e, t, i);
@@ -566,10 +566,10 @@ function m(e) {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-function f(e) {
+function u(e) {
   return m({ ...e, state: !0, attribute: !1 });
 }
-const E = (e, t, i, s) => {
+const A = (e, t, i, s) => {
   const o = new CustomEvent(t, {
     bubbles: !0,
     cancelable: !0,
@@ -577,7 +577,7 @@ const E = (e, t, i, s) => {
     detail: i
   });
   return e.dispatchEvent(o), o;
-}, de = [1, 25, 50, 75, 100], pe = [2200, 2700, 3500, 4500, 6500], ge = [
+}, pe = [1, 25, 50, 75, 100], ge = [2200, 2700, 3500, 4500, 6500], ue = [
   "#FF3B30",
   "#FF9500",
   "#FFCC00",
@@ -616,11 +616,11 @@ const E = (e, t, i, s) => {
     rgb: [255, 137, 14]
   }
 ];
-function D(e) {
+function R(e) {
   return e ? Array.isArray(e) ? e.filter((t) => typeof t == "string" && t.trim().length > 0).map((t) => t.trim()) : typeof e == "string" && e.trim().length > 0 ? [e.trim()] : [] : [];
 }
-function ue(e, t) {
-  const i = D(e), s = [], o = /* @__PURE__ */ new Set();
+function fe(e, t) {
+  const i = R(e), s = [], o = /* @__PURE__ */ new Set();
   for (const n of i) {
     const a = t?.[n]?.attributes?.entity_id;
     if (Array.isArray(a) && a.length > 0)
@@ -630,7 +630,7 @@ function ue(e, t) {
   }
   return s;
 }
-function Fe(e) {
+function Ke(e) {
   if (e == null || e === "") return;
   if (typeof e == "number")
     return e > 0 ? `${e}px` : void 0;
@@ -642,7 +642,7 @@ function Fe(e) {
   const s = parseFloat(t);
   return !isNaN(s) && s > 0 ? t : void 0;
 }
-function Ke(e) {
+function je(e) {
   switch (e) {
     case "contain":
       return "contain";
@@ -654,22 +654,22 @@ function Ke(e) {
       return "cover";
   }
 }
-function je(e) {
+function Ve(e) {
   return e == null ? 0 : Math.round(e / 255 * 100);
 }
-function Lt(e, t, i) {
+function Rt(e, t, i) {
   const s = Math.max(0, Math.min(100, t)) / 100, o = Math.max(0, Math.min(100, i)) / 100, n = o * s, r = n * (1 - Math.abs(e / 60 % 2 - 1)), a = o - n;
-  let l = 0, h = 0, d = 0;
-  return e >= 0 && e < 60 ? (l = n, h = r, d = 0) : e >= 60 && e < 120 ? (l = r, h = n, d = 0) : e >= 120 && e < 180 ? (l = 0, h = n, d = r) : e >= 180 && e < 240 ? (l = 0, h = r, d = n) : e >= 240 && e < 300 ? (l = r, h = 0, d = n) : (l = n, h = 0, d = r), {
+  let l = 0, h = 0, p = 0;
+  return e >= 0 && e < 60 ? (l = n, h = r, p = 0) : e >= 60 && e < 120 ? (l = r, h = n, p = 0) : e >= 120 && e < 180 ? (l = 0, h = n, p = r) : e >= 180 && e < 240 ? (l = 0, h = r, p = n) : e >= 240 && e < 300 ? (l = r, h = 0, p = n) : (l = n, h = 0, p = r), {
     r: Math.round((l + a) * 255),
     g: Math.round((h + a) * 255),
-    b: Math.round((d + a) * 255)
+    b: Math.round((p + a) * 255)
   };
 }
-function ne(e, t, i) {
+function re(e, t, i) {
   const s = e / 255, o = t / 255, n = i / 255, r = Math.max(s, o, n), a = Math.min(s, o, n), l = r - a;
   let h = 0;
-  const d = r === 0 ? 0 : l / r, p = r;
+  const p = r === 0 ? 0 : l / r, d = r;
   if (r !== a) {
     switch (r) {
       case s:
@@ -686,8 +686,8 @@ function ne(e, t, i) {
   }
   return {
     h: Math.round(h),
-    s: Math.round(d * 100),
-    v: Math.round(p * 100)
+    s: Math.round(p * 100),
+    v: Math.round(d * 100)
   };
 }
 const gt = [
@@ -709,11 +709,11 @@ function Dt(e, t = 2e3, i = 6500) {
   for (let a = 0; a < gt.length - 1; a++) {
     const l = gt[a], h = gt[a + 1];
     if (n >= l.ratio && n <= h.ratio) {
-      const d = (n - l.ratio) / (h.ratio - l.ratio);
+      const p = (n - l.ratio) / (h.ratio - l.ratio);
       return {
-        r: Math.round(l.r + d * (h.r - l.r)),
-        g: Math.round(l.g + d * (h.g - l.g)),
-        b: Math.round(l.b + d * (h.b - l.b))
+        r: Math.round(l.r + p * (h.r - l.r)),
+        g: Math.round(l.g + p * (h.g - l.g)),
+        b: Math.round(l.b + p * (h.b - l.b))
       };
     }
   }
@@ -764,12 +764,12 @@ function ft(e) {
   }
   return null;
 }
-function O(e) {
+function D(e) {
   if (!e) return null;
   const t = e.trim();
   if (t.includes("|")) {
     const s = t.split("|"), o = s.find((n) => n.trim().startsWith("#"));
-    return O(o ? o.trim() : s[0].trim());
+    return D(o ? o.trim() : s[0].trim());
   }
   if (t.startsWith("#") || /^[0-9a-fA-F]{6}$/.test(t) || /^[0-9a-fA-F]{3}$/.test(t)) {
     const s = t.replace("#", "");
@@ -793,7 +793,7 @@ function O(e) {
     b: Math.max(0, Math.min(255, parseInt(i[3], 10)))
   } : ft({ color: t });
 }
-function Ve(e, t, i, s, o, n, r = "rgb") {
+function We(e, t, i, s, o, n, r = "rgb") {
   if (e === "brightness")
     return i || t ? `${Math.round(s)}%` : "Off";
   if (e === "temp")
@@ -804,15 +804,7 @@ function Ve(e, t, i, s, o, n, r = "rgb") {
   }
   return "";
 }
-function We(e, t) {
-  let i = null, s = null;
-  return (...n) => {
-    s = n, !i && (i = setTimeout(() => {
-      i = null, s && (e(...s), s = null);
-    }, t));
-  };
-}
-const x = {
+const $ = {
   bed: "M19 7h-8v7H3V5H1v15h2v-3h18v3h2v-9a4 4 0 0 0-4-4m-2 5h-4V9h4zM7 7a3 3 0 0 0-3 3v2h6v-2a3 3 0 0 0-3-3",
   lightbulb: "M12,2A7,7 0 0,0 5,9C5,11.38 6.19,13.47 8,14.74V17A1,1 0 0,0 9,18H15A1,1 0 0,0 16,17V14.74C17.81,13.47 19,11.38 19,9A7,7 0 0,0 12,2M9,21A1,1 0 0,0 10,22H14A1,1 0 0,0 15,21V20H9V21Z",
   power: "M16.56,5.44L15.11,6.89C16.84,8.63 17.63,11.09 17.26,13.62C16.73,17.24 13.72,20.08 10.09,20.44C6.07,20.84 2.6,17.65 2.5,13.62C2.42,10.61 4.09,7.94 6.72,6.72L5.89,5.89C2.78,7.37 0.77,10.72 1,14.5C1.34,19.34 5.22,23.23 10.06,23.57C15.65,23.96 20.35,19.78 20.5,14.22C20.6,10.59 18.91,7.24 16.56,5.44M11,1V12H13V1H11Z",
@@ -833,12 +825,12 @@ function Kt(e, t = 24) {
     </svg>
   `;
 }
-function fe(e, t = x.palette) {
+function be(e, t = $.palette) {
   if (!e) return t;
   const i = e.toLowerCase();
-  return i.includes("pencil") || i.includes("edit") ? x.pencil : i.includes("bed") ? x.bed : i.includes("bulb") || i.includes("light") ? x.lightbulb : i.includes("sun") || i.includes("day") || i.includes("adaptive") ? x.sun : i.includes("sunset") || i.includes("dusk") || i.includes("relax") ? x.sunset : i.includes("night") || i.includes("moon") ? x.night : i.includes("book") || i.includes("read") ? x.book : i.includes("flash") || i.includes("energy") || i.includes("bolt") ? x.flash : i.includes("temp") || i.includes("thermometer") ? x.thermometer : i.includes("palette") || i.includes("color") ? x.palette : i.includes("power") ? x.power : i.includes("bright") ? x.brightness : t;
+  return i.includes("pencil") || i.includes("edit") ? $.pencil : i.includes("bed") ? $.bed : i.includes("bulb") || i.includes("light") ? $.lightbulb : i.includes("sun") || i.includes("day") || i.includes("adaptive") ? $.sun : i.includes("sunset") || i.includes("dusk") || i.includes("relax") ? $.sunset : i.includes("night") || i.includes("moon") ? $.night : i.includes("book") || i.includes("read") ? $.book : i.includes("flash") || i.includes("energy") || i.includes("bolt") ? $.flash : i.includes("temp") || i.includes("thermometer") ? $.thermometer : i.includes("palette") || i.includes("color") ? $.palette : i.includes("power") ? $.power : i.includes("bright") ? $.brightness : t;
 }
-function U(e, t, i = 22) {
+function F(e, t, i = 22) {
   if (e && customElements.get("ha-icon"))
     return c`
       <ha-icon
@@ -846,15 +838,15 @@ function U(e, t, i = 22) {
         style="--mdc-icon-size: ${i}px; width: ${i}px; height: ${i}px; display: flex; align-items: center; justify-content: center;"
       ></ha-icon>
     `;
-  const s = fe(e, t);
+  const s = be(e, t);
   return Kt(s, i);
 }
-var qe = Object.defineProperty, Ge = Object.getOwnPropertyDescriptor, tt = (e, t, i, s) => {
+var qe = Object.defineProperty, Ge = Object.getOwnPropertyDescriptor, J = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? Ge(t, i) : t, n = e.length - 1, r; n >= 0; n--)
     (r = e[n]) && (o = (s ? r(t, i, o) : r(o)) || o);
   return s && o && qe(t, i, o), o;
 };
-let H = class extends R {
+let O = class extends I {
   constructor() {
     super(...arguments), this.active = !1, this.variant = "mode", this.customColor = "", this.customBg = "", this.customBorder = "", this.customShadow = "";
   }
@@ -867,7 +859,7 @@ let H = class extends R {
     `;
   }
 };
-H.styles = rt`
+O.styles = rt`
     :host {
       display: inline-block;
       box-sizing: border-box;
@@ -956,33 +948,33 @@ H.styles = rt`
       transform: scale(1.05);
     }
   `;
-tt([
+J([
   m({ type: Boolean, reflect: !0 })
-], H.prototype, "active", 2);
-tt([
+], O.prototype, "active", 2);
+J([
   m({ type: String })
-], H.prototype, "variant", 2);
-tt([
+], O.prototype, "variant", 2);
+J([
   m({ type: String })
-], H.prototype, "customColor", 2);
-tt([
+], O.prototype, "customColor", 2);
+J([
   m({ type: String })
-], H.prototype, "customBg", 2);
-tt([
+], O.prototype, "customBg", 2);
+J([
   m({ type: String })
-], H.prototype, "customBorder", 2);
-tt([
+], O.prototype, "customBorder", 2);
+J([
   m({ type: String })
-], H.prototype, "customShadow", 2);
-H = tt([
+], O.prototype, "customShadow", 2);
+O = J([
   at("ha-light-action-button")
-], H);
+], O);
 var Ye = Object.defineProperty, Xe = Object.getOwnPropertyDescriptor, B = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? Xe(t, i) : t, n = e.length - 1, r; n >= 0; n--)
     (r = e[n]) && (o = (s ? r(t, i, o) : r(o)) || o);
   return s && o && Ye(t, i, o), o;
 };
-let C = class extends R {
+let C = class extends I {
   constructor() {
     super(...arguments), this.mode = "brightness", this.brightnessPct = 60, this.minBrightness = 0, this.maxBrightness = 100, this.kelvin = 2700, this.minKelvin = 2e3, this.maxKelvin = 6500, this.hue = 30, this.isOn = !0, this.fillColor = "#f8a555", this._isDragging = !1, this._dragRatio = null, this._onWindowMoveBound = this._onWindowPointerMove.bind(this), this._onWindowUpBound = this._onWindowPointerUp.bind(this);
   }
@@ -1147,25 +1139,25 @@ B([
   m({ type: String })
 ], C.prototype, "fillColor", 2);
 B([
-  f()
+  u()
 ], C.prototype, "_isDragging", 2);
 B([
-  f()
+  u()
 ], C.prototype, "_dragRatio", 2);
 C = B([
   at("ha-light-slider")
 ], C);
-var Ze = Object.defineProperty, Je = Object.getOwnPropertyDescriptor, xt = (e, t, i, s) => {
+var Ze = Object.defineProperty, Je = Object.getOwnPropertyDescriptor, yt = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? Je(t, i) : t, n = e.length - 1, r; n >= 0; n--)
     (r = e[n]) && (o = (s ? r(t, i, o) : r(o)) || o);
   return s && o && Ze(t, i, o), o;
 };
-let Q = class extends R {
+let Z = class extends I {
   constructor() {
     super(...arguments), this.name = "", this.icon = "", this.color = "#f5b72e", this.active = !1;
   }
   render() {
-    const e = fe(this.icon);
+    const e = be(this.icon);
     return c`
       <button part="button" title=${this.name}>
         <span class="preset-icon" style="color: ${this.color};">
@@ -1176,7 +1168,7 @@ let Q = class extends R {
     `;
   }
 };
-Q.styles = rt`
+Z.styles = rt`
     :host {
       display: inline-block;
       user-select: none;
@@ -1227,27 +1219,27 @@ Q.styles = rt`
       flex-shrink: 0;
     }
   `;
-xt([
+yt([
   m({ type: String })
-], Q.prototype, "name", 2);
-xt([
+], Z.prototype, "name", 2);
+yt([
   m({ type: String })
-], Q.prototype, "icon", 2);
-xt([
+], Z.prototype, "icon", 2);
+yt([
   m({ type: String })
-], Q.prototype, "color", 2);
-xt([
+], Z.prototype, "color", 2);
+yt([
   m({ type: Boolean, reflect: !0 })
-], Q.prototype, "active", 2);
-Q = xt([
+], Z.prototype, "active", 2);
+Z = yt([
   at("ha-light-preset-pill")
-], Q);
+], Z);
 var Qe = Object.defineProperty, ti = Object.getOwnPropertyDescriptor, lt = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? ti(t, i) : t, n = e.length - 1, r; n >= 0; n--)
     (r = e[n]) && (o = (s ? r(t, i, o) : r(o)) || o);
   return s && o && Qe(t, i, o), o;
 };
-let K = class extends R {
+let j = class extends I {
   constructor() {
     super(...arguments), this.variant = "brightness", this.label = "", this.color = "", this.brightnessValue = 0, this.active = !1;
   }
@@ -1283,7 +1275,7 @@ let K = class extends R {
     `;
   }
 };
-K.styles = rt`
+j.styles = rt`
     :host {
       display: inline-block;
       user-select: none;
@@ -1378,35 +1370,36 @@ K.styles = rt`
   `;
 lt([
   m({ type: String })
-], K.prototype, "variant", 2);
+], j.prototype, "variant", 2);
 lt([
   m({ type: String })
-], K.prototype, "label", 2);
+], j.prototype, "label", 2);
 lt([
   m({ type: String })
-], K.prototype, "color", 2);
+], j.prototype, "color", 2);
 lt([
   m({ type: Number })
-], K.prototype, "brightnessValue", 2);
+], j.prototype, "brightnessValue", 2);
 lt([
   m({ type: Boolean, reflect: !0 })
-], K.prototype, "active", 2);
-K = lt([
+], j.prototype, "active", 2);
+j = lt([
   at("ha-light-subpreset-bubble")
-], K);
+], j);
 var ei = Object.defineProperty, ii = Object.getOwnPropertyDescriptor, w = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? ii(t, i) : t, n = e.length - 1, r; n >= 0; n--)
     (r = e[n]) && (o = (s ? r(t, i, o) : r(o)) || o);
   return s && o && ei(t, i, o), o;
 };
-let v = class extends R {
+let v = class extends I {
   constructor() {
-    super(), this._mode = "brightness", this._isDragging = !1, this._liveBrightness = null, this._liveKelvin = null, this._liveHue = null, this._liveRgb = null, this._localAdaptiveState = !1, this._isEditingSubtitle = !1, this._editBrightness = "", this._editKelvin = "", this._editR = "", this._editG = "", this._editB = "", this._editHex = "", this._lastColorFieldEdited = "rgb", this._selectedEntities = [], this._isDragSelecting = !1, this._selectionBox = null, this._imageLightRegions = {}, this._clickTimer = null, this._lastClickedEntity = null, this._blurTimer = null, this._prevAvailableIdsKey = "", this._lastImageAnalysisKey = "", this._dragStartPos = null, this._dragContainerRect = null, this._holdTimer = null, this._hasDragExceededThreshold = !1, this._suppressClickUntil = 0, this._dragInitialSelection = [], this._onWindowPointerMoveBound = (e) => this._onSelectionPointerMove(e), this._onWindowPointerUpBound = (e) => this._onSelectionPointerUp(e), this._throttledCall = We((e) => {
-      this.hass && this.hass.callService("light", "turn_on", e);
-    }, 120);
+    super(...arguments), this._mode = "brightness", this._isDragging = !1, this._liveBrightness = null, this._liveKelvin = null, this._liveHue = null, this._liveRgb = null, this._liveIsOn = null, this._localAdaptiveState = !1, this._isEditingSubtitle = !1, this._editBrightness = "", this._editKelvin = "", this._editR = "", this._editG = "", this._editB = "", this._editHex = "", this._lastColorFieldEdited = "rgb", this._selectedEntities = [], this._isDragSelecting = !1, this._selectionBox = null, this._imageLightRegions = {}, this._clickTimer = null, this._lastClickedEntity = null, this._blurTimer = null, this._prevAvailableIdsKey = "", this._lastImageAnalysisKey = "", this._dragStartPos = null, this._dragContainerRect = null, this._holdTimer = null, this._hasDragExceededThreshold = !1, this._suppressClickUntil = 0, this._dragInitialSelection = [], this._onWindowPointerMoveBound = (e) => this._onSelectionPointerMove(e), this._onWindowPointerUpBound = (e) => this._onSelectionPointerUp(e), this._optimisticTimer = null;
+  }
+  _clearLiveState() {
+    this._optimisticTimer && (clearTimeout(this._optimisticTimer), this._optimisticTimer = null), this._liveBrightness = null, this._liveKelvin = null, this._liveHue = null, this._liveRgb = null, this._liveIsOn = null;
   }
   disconnectedCallback() {
-    super.disconnectedCallback(), this._clickTimer && (clearTimeout(this._clickTimer), this._clickTimer = null), this._blurTimer && (clearTimeout(this._blurTimer), this._blurTimer = null), this._holdTimer && (clearTimeout(this._holdTimer), this._holdTimer = null), window.removeEventListener("pointermove", this._onWindowPointerMoveBound), window.removeEventListener("pointerup", this._onWindowPointerUpBound), window.removeEventListener("pointercancel", this._onWindowPointerUpBound);
+    super.disconnectedCallback(), this._clickTimer && (clearTimeout(this._clickTimer), this._clickTimer = null), this._blurTimer && (clearTimeout(this._blurTimer), this._blurTimer = null), this._holdTimer && (clearTimeout(this._holdTimer), this._holdTimer = null), this._clearLiveState(), window.removeEventListener("pointermove", this._onWindowPointerMoveBound), window.removeEventListener("pointerup", this._onWindowPointerUpBound), window.removeEventListener("pointercancel", this._onWindowPointerUpBound);
   }
   setConfig(e) {
     if (!e || e.entity === void 0)
@@ -1437,28 +1430,33 @@ let v = class extends R {
   willUpdate(e) {
     if (super.willUpdate(e), !this._config) return;
     if (!!(this._config.show_light_selection || this._config.enable_light_selection)) {
-      const l = this._getAvailableEntities().map((d) => d.entity), h = l.join(",");
+      const l = this._getAvailableEntities().map((p) => p.entity), h = l.join(",");
       if (h !== this._prevAvailableIdsKey)
         this._prevAvailableIdsKey = h, this._selectedEntities = [...l];
       else if (this._selectedEntities.length === 0)
         this._selectedEntities = [...l];
       else {
-        const d = this._selectedEntities.filter(
-          (p) => l.includes(p)
+        const p = this._selectedEntities.filter(
+          (d) => l.includes(d)
         );
-        d.length === 0 && l.length > 0 ? this._selectedEntities = [...l] : d.length !== this._selectedEntities.length && (this._selectedEntities = d);
+        p.length === 0 && l.length > 0 ? this._selectedEntities = [...l] : p.length !== this._selectedEntities.length && (this._selectedEntities = p);
       }
     }
-    const i = this._getLightData(), s = this._config.show_brightness !== !1, o = i.supportsTemp && this._config.show_temperature !== !1 && this._config.show_temp !== !1, n = i.supportsColor && this._config.show_color !== !1, r = [];
+    const i = this._getLightData();
+    if (e.has("hass") && !this._isDragging && this._optimisticTimer) {
+      let a = !0;
+      this._liveBrightness !== null && (a = this._liveBrightness === 0 ? !i.isOn : i.isOn && Math.abs(i.brightnessPct - this._liveBrightness) <= 2), a && this._liveKelvin !== null && (a = i.isOn && Math.abs(i.kelvin - this._liveKelvin) <= 50), a && this._liveRgb !== null && (a = i.isOn && Math.abs(i.rgb.r - this._liveRgb.r) <= 5 && Math.abs(i.rgb.g - this._liveRgb.g) <= 5 && Math.abs(i.rgb.b - this._liveRgb.b) <= 5), a && this._clearLiveState();
+    }
+    const s = this._config.show_brightness !== !1, o = i.supportsTemp && this._config.show_temperature !== !1 && this._config.show_temp !== !1, n = i.supportsColor && this._config.show_color !== !1, r = [];
     s && r.push("brightness"), o && r.push("temp"), n && r.push("color"), r.length > 0 && !r.includes(this._mode) && (this._mode = r[0]);
   }
   _getImageCanvasHeight() {
-    return Fe(
+    return Ke(
       this._config?.light_selection_image_height ?? this._config?.image_height
     );
   }
   _getImageObjectFit() {
-    return Ke(
+    return je(
       this._config?.light_selection_image_fit ?? this._config?.image_fit
     );
   }
@@ -1480,39 +1478,39 @@ let v = class extends R {
     const s = this._getLightSelectionImage() || e.src, o = this._getImageCanvasHeight(), n = o ? this._getImageObjectFit() : "cover", r = t || `${s}|${o || ""}|${n}|${i.map((a) => `${a.entity}:${a.x ?? ""},${a.y ?? ""}`).join(";")}`;
     this._lastImageAnalysisKey = r;
     try {
-      const a = document.createElement("canvas"), l = e.clientWidth || e.naturalWidth, h = e.clientHeight || e.naturalHeight, d = 200, p = Math.max(40, Math.min(400, Math.round(d * (h / Math.max(1, l)))));
-      a.width = d, a.height = p;
+      const a = document.createElement("canvas"), l = e.clientWidth || e.naturalWidth, h = e.clientHeight || e.naturalHeight, p = 200, d = Math.max(40, Math.min(400, Math.round(p * (h / Math.max(1, l)))));
+      a.width = p, a.height = d;
       const g = a.getContext("2d", { willReadFrequently: !0 });
       if (!g) return;
-      g.fillStyle = "#18181b", g.fillRect(0, 0, d, p);
-      let _ = 0, b = 0, $ = d, T = p;
+      g.fillStyle = "#18181b", g.fillRect(0, 0, p, d);
+      let _ = 0, b = 0, S = p, T = d;
       if (o && n === "contain") {
-        const k = Math.min(d / e.naturalWidth, p / e.naturalHeight);
-        $ = e.naturalWidth * k, T = e.naturalHeight * k, _ = (d - $) / 2, b = (p - T) / 2;
+        const x = Math.min(p / e.naturalWidth, d / e.naturalHeight);
+        S = e.naturalWidth * x, T = e.naturalHeight * x, _ = (p - S) / 2, b = (d - T) / 2;
       } else if (o && n === "cover") {
-        const k = Math.max(d / e.naturalWidth, p / e.naturalHeight);
-        $ = e.naturalWidth * k, T = e.naturalHeight * k, _ = (d - $) / 2, b = (p - T) / 2;
+        const x = Math.max(p / e.naturalWidth, d / e.naturalHeight);
+        S = e.naturalWidth * x, T = e.naturalHeight * x, _ = (p - S) / 2, b = (d - T) / 2;
       }
-      g.drawImage(e, _, b, $, T);
-      const M = g.getImageData(0, 0, d, p).data, P = (k, ct, et, j) => {
-        const it = Math.max(0, Math.floor(k)), z = Math.max(0, Math.floor(ct)), V = Math.min(d - 1, Math.ceil(et)), W = Math.min(p - 1, Math.ceil(j));
-        let q = 0, ht = 0;
-        for (let N = z; N <= W; N++)
-          for (let G = it; G <= V; G++) {
-            const Y = (N * d + G) * 4, wt = M[Y], $t = M[Y + 1], St = M[Y + 2], L = M[Y + 3] / 255, Et = wt * L + 24 * (1 - L), At = $t * L + 24 * (1 - L), kt = St * L + 24 * (1 - L);
-            q += 0.299 * Et + 0.587 * At + 0.114 * kt, ht++;
+      g.drawImage(e, _, b, S, T);
+      const M = g.getImageData(0, 0, p, d).data, V = (x, Q, ct, tt) => {
+        const H = Math.max(0, Math.floor(x)), et = Math.max(0, Math.floor(Q)), z = Math.min(p - 1, Math.ceil(ct)), W = Math.min(d - 1, Math.ceil(tt));
+        let q = 0, it = 0;
+        for (let ht = et; ht <= W; ht++)
+          for (let N = H; N <= z; N++) {
+            const U = (ht * p + N) * 4, wt = M[U], $t = M[U + 1], St = M[U + 2], L = M[U + 3] / 255, Et = wt * L + 24 * (1 - L), At = $t * L + 24 * (1 - L), kt = St * L + 24 * (1 - L);
+            q += 0.299 * Et + 0.587 * At + 0.114 * kt, it++;
           }
-        return ht > 0 ? q / ht : 0;
-      }, I = {};
-      i.forEach((k, ct) => {
-        const et = k.x !== void 0 ? k.x : i.length > 1 ? Math.round(100 / (i.length + 1) * (ct + 1)) : 50, j = k.y !== void 0 ? k.y : 50, it = et / 100 * d, z = j / 100 * p, V = d * 0.1, W = p * 0.12, q = P(
-          it - V,
-          z - W * 0.4,
-          it + V,
-          z + W * 1.3
+        return it > 0 ? q / it : 0;
+      }, P = {};
+      i.forEach((x, Q) => {
+        const ct = x.x !== void 0 ? x.x : i.length > 1 ? Math.round(100 / (i.length + 1) * (Q + 1)) : 50, tt = x.y !== void 0 ? x.y : 50, H = ct / 100 * p, et = tt / 100 * d, z = p * 0.1, W = d * 0.12, q = V(
+          H - z,
+          et - W * 0.4,
+          H + z,
+          et + W * 1.3
         );
-        I[k.entity] = q > 140;
-      }), this._imageLightRegions = I;
+        P[x.entity] = q > 140;
+      }), this._imageLightRegions = P;
     } catch {
       this._imageLightRegions = {};
     }
@@ -1547,7 +1545,7 @@ let v = class extends R {
     if (this._config?.adaptive_lighting_entity)
       return this._config.adaptive_lighting_entity;
     if (this.hass && this._config?.entity) {
-      const e = D(this._config.entity);
+      const e = R(this._config.entity);
       for (const t of e) {
         const i = t.replace(/^[^.]+\./, ""), s = [
           `switch.adaptive_lighting_${i}`,
@@ -1589,7 +1587,7 @@ let v = class extends R {
           y: h !== void 0 && !isNaN(h) ? Math.max(0, Math.min(100, h)) : void 0
         };
       }
-    }) : ue(this._config.entity, this.hass?.states).map((i) => {
+    }) : fe(this._config.entity, this.hass?.states).map((i) => {
       const s = this.hass?.states[i], o = s?.attributes?.friendly_name || i.replace(/^[^.]+\./, "").replace(/_/g, " "), n = s?.attributes?.icon;
       return {
         entity: i,
@@ -1605,7 +1603,7 @@ let v = class extends R {
     return this._config?.light_selection_image || this._config?.light_image || this._config?.image || this._config?.floorplan_image;
   }
   _getTargetEntityIds() {
-    return !!(this._config?.show_light_selection || this._config?.enable_light_selection) && this._selectedEntities.length > 0 ? this._selectedEntities : D(this._config?.entity);
+    return !!(this._config?.show_light_selection || this._config?.enable_light_selection) && this._selectedEntities.length > 0 ? this._selectedEntities : R(this._config?.entity);
   }
   _getTargetEntityId() {
     const e = this._getTargetEntityIds();
@@ -1639,8 +1637,8 @@ let v = class extends R {
       e.preventDefault();
       const o = this.shadowRoot?.querySelector(".light-selection-section");
       if (!o) return;
-      const n = this._dragContainerRect || o.getBoundingClientRect(), r = Math.max(0, Math.min(n.width, this._dragStartPos.x - n.left)), a = Math.max(0, Math.min(n.height, this._dragStartPos.y - n.top)), l = Math.max(0, Math.min(n.width, e.clientX - n.left)), h = Math.max(0, Math.min(n.height, e.clientY - n.top)), d = Math.min(r, l), p = Math.min(a, h), g = Math.abs(l - r), _ = Math.abs(h - a);
-      this._selectionBox = { x: d, y: p, width: g, height: _ }, this._updateDragSelection(e.clientX, e.clientY, e.shiftKey);
+      const n = this._dragContainerRect || o.getBoundingClientRect(), r = Math.max(0, Math.min(n.width, this._dragStartPos.x - n.left)), a = Math.max(0, Math.min(n.height, this._dragStartPos.y - n.top)), l = Math.max(0, Math.min(n.width, e.clientX - n.left)), h = Math.max(0, Math.min(n.height, e.clientY - n.top)), p = Math.min(r, l), d = Math.min(a, h), g = Math.abs(l - r), _ = Math.abs(h - a);
+      this._selectionBox = { x: p, y: d, width: g, height: _ }, this._updateDragSelection(e.clientX, e.clientY, e.shiftKey);
     }
   }
   _updateDragSelection(e, t, i) {
@@ -1648,18 +1646,18 @@ let v = class extends R {
     if (!s) return;
     const o = s.querySelectorAll(".light-item");
     if (!o || o.length === 0) return;
-    const n = this._dragStartPos ? this._dragStartPos.x : e, r = this._dragStartPos ? this._dragStartPos.y : t, a = Math.min(n, e), l = Math.min(r, t), h = Math.max(n, e), d = Math.max(r, t), p = [];
+    const n = this._dragStartPos ? this._dragStartPos.x : e, r = this._dragStartPos ? this._dragStartPos.y : t, a = Math.min(n, e), l = Math.min(r, t), h = Math.max(n, e), p = Math.max(r, t), d = [];
     if (o.forEach((g) => {
       const _ = g.getAttribute("data-entity");
       if (!_) return;
-      const b = g.getBoundingClientRect(), $ = e >= b.left && e <= b.right && t >= b.top && t <= b.bottom || n >= b.left && n <= b.right && r >= b.top && r <= b.bottom;
-      (!(h < b.left || a > b.right || d < b.top || l > b.bottom) || $) && p.push(_);
-    }), p.length > 0)
+      const b = g.getBoundingClientRect(), S = e >= b.left && e <= b.right && t >= b.top && t <= b.bottom || n >= b.left && n <= b.right && r >= b.top && r <= b.bottom;
+      (!(h < b.left || a > b.right || p < b.top || l > b.bottom) || S) && d.push(_);
+    }), d.length > 0)
       if (i && this._dragInitialSelection.length > 0) {
-        const g = /* @__PURE__ */ new Set([...this._dragInitialSelection, ...p]);
+        const g = /* @__PURE__ */ new Set([...this._dragInitialSelection, ...d]);
         this._selectedEntities = Array.from(g);
       } else
-        this._selectedEntities = p;
+        this._selectedEntities = d;
   }
   _onSelectionPointerUp(e) {
     this._holdTimer && (clearTimeout(this._holdTimer), this._holdTimer = null), window.removeEventListener("pointermove", this._onWindowPointerMoveBound), window.removeEventListener("pointerup", this._onWindowPointerUpBound), window.removeEventListener("pointercancel", this._onWindowPointerUpBound), this._isDragSelecting && (this._isDragSelecting = !1, this._selectionBox = null, this._suppressClickUntil = Date.now() + 400), this._dragStartPos = null, this._dragContainerRect = null;
@@ -1682,24 +1680,24 @@ let v = class extends R {
     this._selectedEntities.length === 1 && this._selectedEntities[0] === e && t.length > 1 ? this._selectedEntities = [...t] : this._selectedEntities = [e];
   }
   _getLightData() {
-    const e = !!(this._config?.show_light_selection || this._config?.enable_light_selection), t = D(this._config?.entity), i = e && this._selectedEntities.length > 0 ? this._selectedEntities : t;
+    const e = !!(this._config?.show_light_selection || this._config?.enable_light_selection), t = R(this._config?.entity), i = e && this._selectedEntities.length > 0 ? this._selectedEntities : t;
     let s = t[0] || "";
-    e && this._selectedEntities.length === 1 ? s = this._selectedEntities[0] : i.length > 0 && this.hass && (s = i.find((P) => this.hass?.states[P]?.state === "on") || i[0]);
+    e && this._selectedEntities.length === 1 ? s = this._selectedEntities[0] : i.length > 0 && this.hass && (s = i.find((V) => this.hass?.states[V]?.state === "on") || i[0]);
     const o = s ? this.hass?.states[s] : void 0;
     let n = o?.state === "on";
     i.length > 0 && this.hass && (n = i.some(
       (M) => this.hass?.states[M]?.state === "on"
     ));
-    const r = o?.attributes || {}, a = r.brightness !== void 0 ? r.brightness : n ? 255 : 0, l = je(a), h = r.min_color_temp_kelvin || (r.max_mireds ? Math.round(1e6 / r.max_mireds) : this._config?.min_kelvin || 2e3), d = r.max_color_temp_kelvin || (r.min_mireds ? Math.round(1e6 / r.min_mireds) : this._config?.max_kelvin || 6500);
-    let p = r.color_temp_kelvin;
-    !p && r.color_temp && (p = Math.round(1e6 / r.color_temp)), p || (p = 2700), p = Math.max(h, Math.min(d, p));
+    const r = o?.attributes || {}, a = r.brightness !== void 0 ? r.brightness : n ? 255 : 0, l = Ve(a), h = r.min_color_temp_kelvin || (r.max_mireds ? Math.round(1e6 / r.max_mireds) : this._config?.min_kelvin || 2e3), p = r.max_color_temp_kelvin || (r.min_mireds ? Math.round(1e6 / r.min_mireds) : this._config?.max_kelvin || 6500);
+    let d = r.color_temp_kelvin;
+    !d && r.color_temp && (d = Math.round(1e6 / r.color_temp)), d || (d = 2700), d = Math.max(h, Math.min(p, d));
     let g = { r: 255, g: 160, b: 64 }, _ = 30;
     r.rgb_color && Array.isArray(r.rgb_color) && r.rgb_color.length >= 3 ? (g = {
       r: Math.round(Number(r.rgb_color[0])),
       g: Math.round(Number(r.rgb_color[1])),
       b: Math.round(Number(r.rgb_color[2]))
-    }, _ = ne(g.r, g.g, g.b).h) : r.hs_color && Array.isArray(r.hs_color) ? (_ = r.hs_color[0], g = Lt(_, r.hs_color[1] || 100, 100)) : (g = Dt(p, h, d), _ = ne(g.r, g.g, g.b).h);
-    const b = r.supported_color_modes || [], $ = b.includes("color_temp") || r.color_temp_kelvin !== void 0 || r.color_temp !== void 0 || b.length === 0, T = b.includes("hs") || b.includes("rgb") || b.includes("rgbw") || b.includes("rgbww") || b.includes("xy") || b.length === 0;
+    }, _ = re(g.r, g.g, g.b).h) : r.hs_color && Array.isArray(r.hs_color) ? (_ = r.hs_color[0], g = Rt(_, r.hs_color[1] || 100, 100)) : (g = Dt(d, h, p), _ = re(g.r, g.g, g.b).h);
+    const b = r.supported_color_modes || [], S = b.includes("color_temp") || r.color_temp_kelvin !== void 0 || r.color_temp !== void 0 || b.length === 0, T = b.includes("hs") || b.includes("rgb") || b.includes("rgbw") || b.includes("rgbww") || b.includes("xy") || b.length === 0;
     return {
       primaryEntityId: s,
       stateObj: o,
@@ -1707,16 +1705,16 @@ let v = class extends R {
       attrs: r,
       brightnessPct: l,
       minKelvin: h,
-      maxKelvin: d,
-      kelvin: p,
+      maxKelvin: p,
+      kelvin: d,
       rgb: g,
       hue: _,
-      supportsTemp: $,
+      supportsTemp: S,
       supportsColor: T
     };
   }
   _togglePower(e) {
-    e.stopPropagation(), !(!this.hass || !this._config) && (this._isDragging = !1, this._liveBrightness = null, this.hass.callService("light", "toggle", {
+    e.stopPropagation(), !(!this.hass || !this._config) && (this._isDragging = !1, this._clearLiveState(), this.hass.callService("light", "toggle", {
       entity_id: this._getTargetEntityId()
     }));
   }
@@ -1757,19 +1755,19 @@ let v = class extends R {
     return !e || e.length === 0 ? null : c`
       ${e.map((t) => {
       const i = this._isCustomToggleActive(t), s = t.entities || t.entity || t.entity_id, o = Array.isArray(s) ? s : s ? [s] : [], n = t.title || t.name || (o.length > 0 ? o.join(", ") : "Toggle"), r = t.icon || "mdi:lightbulb-outline";
-      let a = "", l = "", h = "", d = "";
-      return t.color && i && (h = t.color, l = t.color, d = `0 0 12px ${t.color}`), c`
+      let a = "", l = "", h = "", p = "";
+      return t.color && i && (h = t.color, l = t.color, p = `0 0 12px ${t.color}`), c`
           <ha-light-action-button
             variant="toggle"
             ?active=${i}
             .customBg=${a}
             .customBorder=${l}
             .customColor=${h}
-            .customShadow=${d}
-            @click=${(p) => this._handleCustomToggle(t, p)}
+            .customShadow=${p}
+            @click=${(d) => this._handleCustomToggle(t, d)}
             title="${n}"
           >
-            ${U(r, x.lightbulb, 20)}
+            ${F(r, $.lightbulb, 20)}
           </ha-light-action-button>
         `;
     })}
@@ -1777,8 +1775,8 @@ let v = class extends R {
   }
   _fireMoreInfo(e) {
     if (e.stopPropagation(), !this._config) return;
-    const t = this._getTargetEntityIds(), i = D(this._config.entity), s = t[0] || i[0];
-    s && E(this, "hass-more-info", { entityId: s });
+    const t = this._getTargetEntityIds(), i = R(this._config.entity), s = t[0] || i[0];
+    s && A(this, "hass-more-info", { entityId: s });
   }
   _setMode(e) {
     this._mode = e;
@@ -1810,7 +1808,7 @@ let v = class extends R {
   _onHexInput(e) {
     const t = e.target, i = t.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6).toUpperCase();
     if (t.value = i, this._editHex = i, this._lastColorFieldEdited = "hex", i.length === 6 || i.length === 3) {
-      const s = O("#" + i);
+      const s = D("#" + i);
       s && (this._editR = String(s.r), this._editG = String(s.g), this._editB = String(s.b));
     }
   }
@@ -1838,7 +1836,7 @@ let v = class extends R {
       this._isEditingSubtitle = !1;
       return;
     }
-    this._blurTimer && (clearTimeout(this._blurTimer), this._blurTimer = null), this._isEditingSubtitle = !1;
+    this._blurTimer && (clearTimeout(this._blurTimer), this._blurTimer = null), this._isEditingSubtitle = !1, this._clearLiveState();
     const e = this._getLightData();
     if (this._mode === "brightness") {
       const t = parseInt(this._editBrightness, 10);
@@ -1862,9 +1860,9 @@ let v = class extends R {
       const t = this._config.color_format || this._config.color_text_format || "rgb";
       let i = null;
       if (t === "hex")
-        i = O("#" + this._editHex);
+        i = D("#" + this._editHex);
       else if (t === "both" && this._lastColorFieldEdited === "hex")
-        i = O("#" + this._editHex);
+        i = D("#" + this._editHex);
       else {
         const s = Math.max(0, Math.min(255, parseInt(this._editR || "0", 10))), o = Math.max(0, Math.min(255, parseInt(this._editG || "0", 10))), n = Math.max(0, Math.min(255, parseInt(this._editB || "0", 10)));
         i = { r: s, g: o, b: n };
@@ -1880,55 +1878,49 @@ let v = class extends R {
   }
   _onSliderInput(e) {
     const { ratio: t, mode: i } = e.detail;
-    this._isDragging = !0, this._mode = i;
+    this._optimisticTimer && (clearTimeout(this._optimisticTimer), this._optimisticTimer = null), this._isDragging = !0, this._mode = i;
     const s = this._getLightData();
     if (i === "brightness") {
       const o = this._config?.min_brightness ?? 0, n = this._config?.max_brightness ?? 100, r = Math.round(o + t * (n - o));
-      this._liveBrightness = r, this._throttledCall({
-        entity_id: this._getTargetEntityId(),
-        brightness_pct: r
-      });
+      this._liveBrightness = r, this._liveIsOn = r > 0;
     } else if (i === "temp") {
       const o = Math.round(s.minKelvin + t * (s.maxKelvin - s.minKelvin));
-      this._liveKelvin = o, this._throttledCall({
-        entity_id: this._getTargetEntityId(),
-        color_temp_kelvin: o
-      });
+      this._liveKelvin = o, this._liveIsOn = !0;
     } else if (i === "color") {
-      const o = Math.round(t * 360) % 360, n = Lt(o, 100, 100);
-      this._liveHue = o, this._liveRgb = n, this._throttledCall({
-        entity_id: this._getTargetEntityId(),
-        rgb_color: [n.r, n.g, n.b]
-      });
+      const o = Math.round(t * 360) % 360, n = Rt(o, 100, 100);
+      this._liveHue = o, this._liveRgb = n, this._liveIsOn = !0;
     }
   }
   _onSliderChange(e) {
     const { ratio: t, mode: i } = e.detail;
     this._isDragging = !1, this._mode = i;
     const s = this._getLightData();
-    if (i === "brightness") {
+    if (this._optimisticTimer && (clearTimeout(this._optimisticTimer), this._optimisticTimer = null), i === "brightness") {
       const o = this._config?.min_brightness ?? 0, n = this._config?.max_brightness ?? 100, r = Math.round(o + t * (n - o));
-      this._liveBrightness = null, this.hass && this._config && (r === 0 ? this.hass.callService("light", "turn_off", { entity_id: this._getTargetEntityId() }) : this.hass.callService("light", "turn_on", {
+      this._liveBrightness = r, this._liveIsOn = r > 0, this.hass && this._config && (r === 0 ? this.hass.callService("light", "turn_off", { entity_id: this._getTargetEntityId() }) : this.hass.callService("light", "turn_on", {
         entity_id: this._getTargetEntityId(),
         brightness_pct: r
       }));
     } else if (i === "temp") {
       const o = Math.round(s.minKelvin + t * (s.maxKelvin - s.minKelvin));
-      this._liveKelvin = null, this.hass && this._config && this.hass.callService("light", "turn_on", {
+      this._liveKelvin = o, this._liveIsOn = !0, this.hass && this._config && this.hass.callService("light", "turn_on", {
         entity_id: this._getTargetEntityId(),
         color_temp_kelvin: o
       });
     } else if (i === "color") {
-      const o = Math.round(t * 360) % 360, n = Lt(o, 100, 100);
-      this._liveHue = null, this._liveRgb = null, this.hass && this._config && this.hass.callService("light", "turn_on", {
+      const o = Math.round(t * 360) % 360, n = Rt(o, 100, 100);
+      this._liveHue = o, this._liveRgb = n, this._liveIsOn = !0, this.hass && this._config && this.hass.callService("light", "turn_on", {
         entity_id: this._getTargetEntityId(),
         rgb_color: [n.r, n.g, n.b]
       });
     }
+    this._optimisticTimer = setTimeout(() => {
+      this._clearLiveState();
+    }, 1500);
   }
   _applyPreset(e) {
     if (!this.hass || !this._config) return;
-    if (this._isDragging = !1, this._liveBrightness = null, this._liveKelvin = null, this._liveHue = null, this._liveRgb = null, e.scene) {
+    if (this._isDragging = !1, this._clearLiveState(), e.scene) {
       this.hass.callService("scene", "turn_on", { entity_id: e.scene });
       return;
     }
@@ -1953,32 +1945,32 @@ let v = class extends R {
   // ─── Subpreset helpers ───────────────────────────────────────────────────
   _normalizeBrightnessSubpresets() {
     const e = this._config;
-    return (e.brightness_presets ?? e.subpresets?.brightness ?? de).map((i) => typeof i == "number" ? { value: i, label: `${i}%` } : { value: i.value, label: i.label ?? `${i.value}%` });
+    return (e.brightness_presets ?? e.subpresets?.brightness ?? pe).map((i) => typeof i == "number" ? { value: i, label: `${i}%` } : { value: i.value, label: i.label ?? `${i.value}%` });
   }
   _normalizeTempSubpresets() {
     const e = this._config;
-    return (e.temperature_presets ?? e.temp_presets ?? e.subpresets?.temperature ?? e.subpresets?.temp ?? pe).map((i) => typeof i == "number" ? { kelvin: i, label: `${i}K` } : { kelvin: i.kelvin, label: i.label ?? `${i.kelvin}K` });
+    return (e.temperature_presets ?? e.temp_presets ?? e.subpresets?.temperature ?? e.subpresets?.temp ?? ge).map((i) => typeof i == "number" ? { kelvin: i, label: `${i}K` } : { kelvin: i.kelvin, label: i.label ?? `${i.kelvin}K` });
   }
   _normalizeColorSubpresets() {
     const e = this._config;
-    return (e.color_presets ?? e.subpresets?.color ?? ge).map((i) => typeof i == "string" ? { color: i, label: i } : { color: i.color, label: i.label ?? i.color });
+    return (e.color_presets ?? e.subpresets?.color ?? ue).map((i) => typeof i == "string" ? { color: i, label: i } : { color: i.color, label: i.label ?? i.color });
   }
   _applyBrightnessSubpreset(e) {
-    !this.hass || !this._config || (this._isDragging = !1, this._liveBrightness = null, e === 0 ? this.hass.callService("light", "turn_off", { entity_id: this._getTargetEntityId() }) : this.hass.callService("light", "turn_on", {
+    !this.hass || !this._config || (this._isDragging = !1, this._clearLiveState(), e === 0 ? this.hass.callService("light", "turn_off", { entity_id: this._getTargetEntityId() }) : this.hass.callService("light", "turn_on", {
       entity_id: this._getTargetEntityId(),
       brightness_pct: e
     }));
   }
   _applyTempSubpreset(e) {
-    !this.hass || !this._config || (this._isDragging = !1, this._liveKelvin = null, this.hass.callService("light", "turn_on", {
+    !this.hass || !this._config || (this._isDragging = !1, this._clearLiveState(), this.hass.callService("light", "turn_on", {
       entity_id: this._getTargetEntityId(),
       color_temp_kelvin: e
     }));
   }
   _applyColorSubpreset(e) {
     if (!this.hass || !this._config) return;
-    this._isDragging = !1, this._liveRgb = null, this._liveHue = null;
-    const t = O(e);
+    this._isDragging = !1, this._clearLiveState();
+    const t = D(e);
     t && this.hass.callService("light", "turn_on", {
       entity_id: this._getTargetEntityId(),
       rgb_color: [t.r, t.g, t.b]
@@ -1992,7 +1984,7 @@ let v = class extends R {
   }
   _isColorSubpresetActive(e, t) {
     if (!t.isOn) return !1;
-    const i = O(e);
+    const i = D(e);
     return !i || !t.rgb ? !1 : t.rgb.r === i.r && t.rgb.g === i.g && t.rgb.b === i.b;
   }
   _renderSubtitleEditor(e) {
@@ -2185,8 +2177,8 @@ let v = class extends R {
           />
           <div class="light-selection-overlay">
             ${t.map((l, h) => {
-        const d = l.x !== void 0 ? l.x : t.length > 1 ? Math.round(100 / (t.length + 1) * (h + 1)) : 50, p = l.y !== void 0 ? l.y : 50;
-        return this._renderLightItem(l, i, !0, d, p);
+        const p = l.x !== void 0 ? l.x : t.length > 1 ? Math.round(100 / (t.length + 1) * (h + 1)) : 50, d = l.y !== void 0 ? l.y : 50;
+        return this._renderLightItem(l, i, !0, p, d);
       })}
           </div>
           ${this._selectionBox && (this._selectionBox.width > 2 || this._selectionBox.height > 2) ? c`
@@ -2217,14 +2209,14 @@ let v = class extends R {
     const n = this._selectedEntities.includes(e.entity), r = this.hass?.states[e.entity], a = r?.state === "on", l = r?.attributes || {};
     let h = "#fed166";
     l.rgb_color && Array.isArray(l.rgb_color) && l.rgb_color.length >= 3 && (h = `rgb(${l.rgb_color[0]}, ${l.rgb_color[1]}, ${l.rgb_color[2]})`);
-    let d = t !== "never";
-    e.showLabel !== void 0 && (d = e.showLabel);
-    const p = i && s !== void 0 && o !== void 0 ? `left: ${s}%; top: ${o}%;` : "", g = i && !!this._imageLightRegions[e.entity];
+    let p = t !== "never";
+    e.showLabel !== void 0 && (p = e.showLabel);
+    const d = i && s !== void 0 && o !== void 0 ? `left: ${s}%; top: ${o}%;` : "", g = i && !!this._imageLightRegions[e.entity];
     return c`
       <div
         class="light-item ${n ? "selected" : "unselected"} ${a ? "light-on" : "light-off"} ${g ? "bg-is-light" : ""} mode-${t}"
         data-entity="${e.entity}"
-        style="${p}"
+        style="${d}"
         @click=${(_) => this._handleLightClick(e.entity, _)}
         @dblclick=${(_) => _.preventDefault()}
         title="${e.name} (${a ? "On" : "Off"})${n ? " • Selected" : ""} (Click to toggle, double-click to solo)"
@@ -2234,10 +2226,10 @@ let v = class extends R {
           style="${a ? `--light-active-color: ${h};` : ""}"
         >
           <span class="light-circle-icon">
-            ${U(e.icon, x.lightbulb, 28)}
+            ${F(e.icon, $.lightbulb, 28)}
           </span>
         </div>
-        ${d ? c`
+        ${p ? c`
               <div class="light-label-slot">
                 <span class="light-label-badge">${e.name}</span>
               </div>
@@ -2247,36 +2239,37 @@ let v = class extends R {
   }
   render() {
     if (!this._config) return c``;
-    const e = this._getLightData(), t = this._isAdaptiveLightingOn(), i = this._isSubtitleEditable(), s = this._config.min_brightness ?? 0, o = this._config.max_brightness ?? 100, n = Math.max(1, this._config.preset_max_rows ?? 3), r = this._isDragging && this._liveBrightness !== null ? this._liveBrightness : e.brightnessPct, a = this._isDragging && this._liveKelvin !== null ? this._liveKelvin : e.kelvin, l = this._isDragging && this._liveHue !== null ? this._liveHue : e.hue, h = this._isDragging && this._liveRgb !== null ? this._liveRgb : e.rgb, d = {
+    const e = this._getLightData(), t = this._isAdaptiveLightingOn(), i = this._isSubtitleEditable(), s = this._config.min_brightness ?? 0, o = this._config.max_brightness ?? 100, n = Math.max(1, this._config.preset_max_rows ?? 3), r = this._liveIsOn !== null ? this._liveIsOn : e.isOn, a = this._liveBrightness !== null ? this._liveBrightness : e.brightnessPct, l = this._liveKelvin !== null ? this._liveKelvin : e.kelvin, h = this._liveHue !== null ? this._liveHue : e.hue, p = this._liveRgb !== null ? this._liveRgb : e.rgb, d = {
       ...e,
-      brightnessPct: r,
-      kelvin: a,
-      rgb: h
-    }, p = D(this._config.entity), g = p[0] || "", _ = this._config.name || (p.length === 1 ? this.hass?.states[g]?.attributes?.friendly_name : void 0) || e.attrs.friendly_name || e.primaryEntityId?.replace(/^[^.]+\./, "").replace(/_/g, " ") || g.replace(/^[^.]+\./, "").replace(/_/g, " ") || "Light", b = this._config.color_format || this._config.color_text_format || "rgb", $ = this._config.show_brightness !== !1, T = e.supportsTemp && this._config.show_temperature !== !1 && this._config.show_temp !== !1, M = e.supportsColor && this._config.show_color !== !1, P = [];
-    $ && P.push("brightness"), T && P.push("temp"), M && P.push("color"), P.length === 0 && P.push("brightness");
-    const I = P.includes(this._mode) ? this._mode : P[0], k = Ve(
-      I,
-      e.isOn,
-      this._isDragging,
+      isOn: r,
+      brightnessPct: a,
+      kelvin: l,
+      rgb: p
+    }, g = R(this._config.entity), _ = g[0] || "", b = this._config.name || (g.length === 1 ? this.hass?.states[_]?.attributes?.friendly_name : void 0) || e.attrs.friendly_name || e.primaryEntityId?.replace(/^[^.]+\./, "").replace(/_/g, " ") || _.replace(/^[^.]+\./, "").replace(/_/g, " ") || "Light", S = this._config.color_format || this._config.color_text_format || "rgb", T = this._config.show_brightness !== !1, M = e.supportsTemp && this._config.show_temperature !== !1 && this._config.show_temp !== !1, V = e.supportsColor && this._config.show_color !== !1, P = [];
+    T && P.push("brightness"), M && P.push("temp"), V && P.push("color"), P.length === 0 && P.push("brightness");
+    const x = P.includes(this._mode) ? this._mode : P[0], Q = We(
+      x,
       r,
+      this._isDragging,
       a,
-      h,
-      b
-    ), ct = this._config.icon || e.attrs.icon || "mdi:bed", et = this._config.show_presets !== !1 && Array.isArray(this._config.presets) ? this._config.presets : [], j = this._config.show_all_mode_buttons === !0, it = this._config.show_all_sliders === !0 || this._config.all_sliders === !0, z = P.length > 1, V = z && $ && (j ? !0 : I !== "brightness"), W = z && T && (j ? !0 : I !== "temp"), q = z && M && (j ? !0 : I !== "color"), ht = V || W || q, N = e.isOn ? "#f8a555" : "#4a3c30", G = this._config.highlight_mode_buttons !== !1 && this._config.mode_button_highlights !== !1;
-    let Y = "", wt = "", $t = "", St = "";
-    if (G && e.isOn) {
-      const u = Math.max(0.01, Math.min(1, r / 100));
-      Y = `rgba(245, 158, 11, ${0.08 + u * 0.32})`, wt = `rgba(245, 158, 11, ${0.2 + u * 0.45})`, $t = u > 0.35 ? "#ffffff" : "rgba(255, 235, 200, 0.85)", St = `0 0 ${Math.round(u * 12)}px rgba(245, 158, 11, ${u * 0.5})`;
+      l,
+      p,
+      S
+    ), ct = this._config.icon || e.attrs.icon || "mdi:bed", tt = this._config.show_presets !== !1 && Array.isArray(this._config.presets) ? this._config.presets : [], H = this._config.show_all_mode_buttons === !0, et = this._config.show_all_sliders === !0 || this._config.all_sliders === !0, z = P.length > 1, W = z && T && (H ? !0 : x !== "brightness"), q = z && M && (H ? !0 : x !== "temp"), it = z && V && (H ? !0 : x !== "color"), ht = W || q || it, N = r ? "#f8a555" : "#4a3c30", U = this._config.highlight_mode_buttons !== !1 && this._config.mode_button_highlights !== !1;
+    let wt = "", $t = "", St = "", L = "";
+    if (U && r) {
+      const f = Math.max(0.01, Math.min(1, a / 100));
+      wt = `rgba(245, 158, 11, ${0.08 + f * 0.32})`, $t = `rgba(245, 158, 11, ${0.2 + f * 0.45})`, St = f > 0.35 ? "#ffffff" : "rgba(255, 235, 200, 0.85)", L = `0 0 ${Math.round(f * 12)}px rgba(245, 158, 11, ${f * 0.5})`;
     }
-    let L = "", Et = "", At = "", kt = "";
-    if (G && e.isOn && e.supportsTemp) {
-      const u = Dt(a, e.minKelvin, e.maxKelvin);
-      L = `rgba(${u.r}, ${u.g}, ${u.b}, 0.20)`, Et = `rgba(${u.r}, ${u.g}, ${u.b}, 0.45)`, At = `rgb(${u.r}, ${u.g}, ${u.b})`, kt = `0 0 10px rgba(${u.r}, ${u.g}, ${u.b}, 0.35)`;
+    let Et = "", At = "", kt = "", jt = "";
+    if (U && r && e.supportsTemp) {
+      const f = Dt(l, e.minKelvin, e.maxKelvin);
+      Et = `rgba(${f.r}, ${f.g}, ${f.b}, 0.20)`, At = `rgba(${f.r}, ${f.g}, ${f.b}, 0.45)`, kt = `rgb(${f.r}, ${f.g}, ${f.b})`, jt = `0 0 10px rgba(${f.r}, ${f.g}, ${f.b}, 0.35)`;
     }
-    let jt = "", Vt = "", Wt = "", qt = "";
-    if (G && e.isOn && e.supportsColor) {
-      const u = h || e.rgb || { r: 255, g: 160, b: 64 };
-      jt = `rgba(${u.r}, ${u.g}, ${u.b}, 0.22)`, Vt = `rgba(${u.r}, ${u.g}, ${u.b}, 0.50)`, Wt = `rgb(${u.r}, ${u.g}, ${u.b})`, qt = `0 0 12px rgba(${u.r}, ${u.g}, ${u.b}, 0.40)`;
+    let Vt = "", Wt = "", qt = "", Gt = "";
+    if (U && r && e.supportsColor) {
+      const f = p || e.rgb || { r: 255, g: 160, b: 64 };
+      Vt = `rgba(${f.r}, ${f.g}, ${f.b}, 0.22)`, Wt = `rgba(${f.r}, ${f.g}, ${f.b}, 0.50)`, qt = `rgb(${f.r}, ${f.g}, ${f.b})`, Gt = `0 0 12px rgba(${f.r}, ${f.g}, ${f.b}, 0.40)`;
     }
     return c`
       <div class="card-container">
@@ -2286,24 +2279,24 @@ let v = class extends R {
           <div class="header-left">
             <div
               class="main-icon-wrap"
-              style="color: ${e.isOn ? "var(--primary-text)" : "var(--secondary-text)"};"
+              style="color: ${r ? "var(--primary-text)" : "var(--secondary-text)"};"
               @click=${this._fireMoreInfo}
             >
-              ${U(ct, x.bed, 28)}
+              ${F(ct, $.bed, 28)}
             </div>
             <div class="header-text-group">
-              <div class="title">${_}</div>
-              ${this._config.show_subtitle !== !1 ? this._isEditingSubtitle ? this._renderSubtitleEditor(b) : i ? c`
+              <div class="title">${b}</div>
+              ${this._config.show_subtitle !== !1 ? this._isEditingSubtitle ? this._renderSubtitleEditor(S) : i ? c`
                       <div
                         class="subtitle editable"
                         @click=${this._startSubtitleEdit}
                         title="Click to edit value"
                       >
-                        <span>${k}</span>
-                        <span class="subtitle-edit-icon">${Kt(x.pencil, 12)}</span>
+                        <span>${Q}</span>
+                        <span class="subtitle-edit-icon">${Kt($.pencil, 12)}</span>
                       </div>
                     ` : c`
-                      <div class="subtitle">${k}</div>
+                      <div class="subtitle">${Q}</div>
                     ` : null}
             </div>
           </div>
@@ -2317,36 +2310,36 @@ let v = class extends R {
                     @click=${this._toggleAdaptiveLighting}
                     title="Adaptive Lighting"
                   >
-                    ${U(this._config.adaptive_lighting_icon, x.sun, 22)}
+                    ${F(this._config.adaptive_lighting_icon, $.sun, 22)}
                   </ha-light-action-button>
                 ` : null}
             <ha-light-action-button
               variant="power"
-              ?active=${e.isOn}
+              ?active=${r}
               @click=${this._togglePower}
               title="Power Toggle"
             >
-              ${U(this._config.power_icon, x.power, 22)}
+              ${F(this._config.power_icon, $.power, 22)}
             </ha-light-action-button>
           </div>
         </div>
 
         <!-- Slider Controls -->
-        ${it ? c`
+        ${et ? c`
               <!-- Stacked Sliders (All enabled sliders on top of one another with subpresets under each) -->
               <div class="sliders-stack">
-                ${$ ? c`
+                ${T ? c`
                       <div class="slider-group">
                         <ha-light-slider
                           .mode=${"brightness"}
-                          .brightnessPct=${r}
+                          .brightnessPct=${a}
                           .minBrightness=${s}
                           .maxBrightness=${o}
-                          .kelvin=${a}
+                          .kelvin=${l}
                           .minKelvin=${e.minKelvin}
                           .maxKelvin=${e.maxKelvin}
-                          .hue=${l}
-                          .isOn=${e.isOn}
+                          .hue=${h}
+                          .isOn=${r}
                           .fillColor=${N}
                           @slider-input=${this._onSliderInput}
                           @slider-change=${this._onSliderChange}
@@ -2354,18 +2347,18 @@ let v = class extends R {
                         ${this._renderSubpresetsForMode("brightness", d)}
                       </div>
                     ` : null}
-                ${T ? c`
+                ${M ? c`
                       <div class="slider-group">
                         <ha-light-slider
                           .mode=${"temp"}
-                          .brightnessPct=${r}
+                          .brightnessPct=${a}
                           .minBrightness=${s}
                           .maxBrightness=${o}
-                          .kelvin=${a}
+                          .kelvin=${l}
                           .minKelvin=${e.minKelvin}
                           .maxKelvin=${e.maxKelvin}
-                          .hue=${l}
-                          .isOn=${e.isOn}
+                          .hue=${h}
+                          .isOn=${r}
                           .fillColor=${N}
                           @slider-input=${this._onSliderInput}
                           @slider-change=${this._onSliderChange}
@@ -2373,18 +2366,18 @@ let v = class extends R {
                         ${this._renderSubpresetsForMode("temp", d)}
                       </div>
                     ` : null}
-                ${M ? c`
+                ${V ? c`
                       <div class="slider-group">
                         <ha-light-slider
                           .mode=${"color"}
-                          .brightnessPct=${r}
+                          .brightnessPct=${a}
                           .minBrightness=${s}
                           .maxBrightness=${o}
-                          .kelvin=${a}
+                          .kelvin=${l}
                           .minKelvin=${e.minKelvin}
                           .maxKelvin=${e.maxKelvin}
-                          .hue=${l}
-                          .isOn=${e.isOn}
+                          .hue=${h}
+                          .isOn=${r}
                           .fillColor=${N}
                           @slider-input=${this._onSliderInput}
                           @slider-change=${this._onSliderChange}
@@ -2397,15 +2390,15 @@ let v = class extends R {
               <!-- Slider and Mode Controls (Single slider with quick-swap buttons) -->
               <div class="slider-row">
                 <ha-light-slider
-                  .mode=${I}
-                  .brightnessPct=${r}
+                  .mode=${x}
+                  .brightnessPct=${a}
                   .minBrightness=${s}
                   .maxBrightness=${o}
-                  .kelvin=${a}
+                  .kelvin=${l}
                   .minKelvin=${e.minKelvin}
                   .maxKelvin=${e.maxKelvin}
-                  .hue=${l}
-                  .isOn=${e.isOn}
+                  .hue=${h}
+                  .isOn=${r}
                   .fillColor=${N}
                   @slider-input=${this._onSliderInput}
                   @slider-change=${this._onSliderChange}
@@ -2413,46 +2406,46 @@ let v = class extends R {
 
                 ${ht ? c`
                       <div class="mode-buttons">
-                        ${V ? c`
-                              <ha-light-action-button
-                                variant="mode"
-                                ?active=${I === "brightness"}
-                                .customBg=${Y}
-                                .customBorder=${wt}
-                                .customColor=${$t}
-                                .customShadow=${St}
-                                @click=${() => this._setMode("brightness")}
-                                title="Brightness"
-                              >
-                                ${U(this._config.brightness_icon, x.brightness, 20)}
-                              </ha-light-action-button>
-                            ` : null}
                         ${W ? c`
                               <ha-light-action-button
                                 variant="mode"
-                                ?active=${I === "temp"}
-                                .customBg=${L}
-                                .customBorder=${Et}
-                                .customColor=${At}
-                                .customShadow=${kt}
-                                @click=${() => this._setMode("temp")}
-                                title="Color Temperature"
+                                ?active=${x === "brightness"}
+                                .customBg=${wt}
+                                .customBorder=${$t}
+                                .customColor=${St}
+                                .customShadow=${L}
+                                @click=${() => this._setMode("brightness")}
+                                title="Brightness"
                               >
-                                ${U(this._config.temperature_icon, x.thermometer, 20)}
+                                ${F(this._config.brightness_icon, $.brightness, 20)}
                               </ha-light-action-button>
                             ` : null}
                         ${q ? c`
                               <ha-light-action-button
                                 variant="mode"
-                                ?active=${I === "color"}
-                                .customBg=${jt}
-                                .customBorder=${Vt}
-                                .customColor=${Wt}
-                                .customShadow=${qt}
+                                ?active=${x === "temp"}
+                                .customBg=${Et}
+                                .customBorder=${At}
+                                .customColor=${kt}
+                                .customShadow=${jt}
+                                @click=${() => this._setMode("temp")}
+                                title="Color Temperature"
+                              >
+                                ${F(this._config.temperature_icon, $.thermometer, 20)}
+                              </ha-light-action-button>
+                            ` : null}
+                        ${it ? c`
+                              <ha-light-action-button
+                                variant="mode"
+                                ?active=${x === "color"}
+                                .customBg=${Vt}
+                                .customBorder=${Wt}
+                                .customColor=${qt}
+                                .customShadow=${Gt}
                                 @click=${() => this._setMode("color")}
                                 title="Color"
                               >
-                                ${U(this._config.color_icon, x.palette, 20)}
+                                ${F(this._config.color_icon, $.palette, 20)}
                               </ha-light-action-button>
                             ` : null}
                       </div>
@@ -2460,21 +2453,21 @@ let v = class extends R {
               </div>
 
               <!-- Subpresets Row for Active Single Mode -->
-              ${this._renderSubpresetsForMode(I, d)}
+              ${this._renderSubpresetsForMode(x, d)}
             `}
 
         <!-- Presets Row (Multi-row expandable up to preset_max_rows, vertically scrollable past that) -->
-        ${et.length > 0 ? c`
+        ${tt.length > 0 ? c`
               <div class="presets-row" style="--preset-max-rows: ${n};">
-                ${et.map((u) => {
-      const be = this._isPresetActive(u, d), dt = ft(u), _e = u.icon_color || (typeof u.color == "string" && !dt ? u.color : dt ? `rgb(${dt.r}, ${dt.g}, ${dt.b})` : "#f5b72e");
+                ${tt.map((f) => {
+      const _e = this._isPresetActive(f, d), dt = ft(f), me = f.icon_color || (typeof f.color == "string" && !dt ? f.color : dt ? `rgb(${dt.r}, ${dt.g}, ${dt.b})` : "#f5b72e");
       return c`
                     <ha-light-preset-pill
-                      .name=${u.name}
-                      .icon=${u.icon || "mdi:palette"}
-                      .color=${_e}
-                      ?active=${be}
-                      @click=${() => this._applyPreset(u)}
+                      .name=${f.name}
+                      .icon=${f.icon || "mdi:palette"}
+                      .color=${me}
+                      ?active=${_e}
+                      @click=${() => this._applyPreset(f)}
                     ></ha-light-preset-pill>
                   `;
     })}
@@ -3020,69 +3013,72 @@ w([
   m({ attribute: !1 })
 ], v.prototype, "hass", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_config", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_mode", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_isDragging", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_liveBrightness", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_liveKelvin", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_liveHue", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_liveRgb", 2);
 w([
-  f()
+  u()
+], v.prototype, "_liveIsOn", 2);
+w([
+  u()
 ], v.prototype, "_localAdaptiveState", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_isEditingSubtitle", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_editBrightness", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_editKelvin", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_editR", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_editG", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_editB", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_editHex", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_lastColorFieldEdited", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_selectedEntities", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_isDragSelecting", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_selectionBox", 2);
 w([
-  f()
+  u()
 ], v.prototype, "_imageLightRegions", 2);
 v = w([
   at("ha-light-card")
 ], v);
-var si = Object.defineProperty, oi = Object.getOwnPropertyDescriptor, S = (e, t, i, s) => {
+var si = Object.defineProperty, oi = Object.getOwnPropertyDescriptor, E = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? oi(t, i) : t, n = e.length - 1, r; n >= 0; n--)
     (r = e[n]) && (o = (s ? r(t, i, o) : r(o)) || o);
   return s && o && si(t, i, o), o;
@@ -3095,7 +3091,7 @@ const ni = /* @__PURE__ */ new Set([
   "image/gif",
   "image/svg+xml"
 ]);
-let y = class extends R {
+let y = class extends I {
   constructor() {
     super(...arguments), this._mainEntitySearch = "", this._mainEntityDropdownOpen = !1, this._adaptiveSearch = "", this._adaptiveDropdownOpen = !1, this._addLightSearch = "", this._addLightDropdownOpen = !1, this._uploadError = "", this._isDraggingFile = !1, this._newToggleEntities = "", this._newToggleIcon = "", this._newToggleName = "", this._newBrightnessSubpreset = "", this._newTempSubpreset = "", this._newColorSubpreset = "#FF9500", this._dragReorderList = null, this._dragReorderIndex = null, this._dragOverIndex = null, this._onReorderMoveBound = (e) => this._onReorderMove(e), this._onReorderUpBound = (e) => this._onReorderUp(e);
   }
@@ -3114,7 +3110,7 @@ let y = class extends R {
       ...this._config,
       [i]: s
     };
-    (s === "" || s === void 0) && delete o[i], this._config = o, E(this, "config-changed", { config: this._config });
+    (s === "" || s === void 0) && delete o[i], this._config = o, A(this, "config-changed", { config: this._config });
   }
   _getFilteredHassEntities(e, t) {
     const i = this.hass?.states || {}, s = e.trim().toLowerCase(), o = Object.values(i).filter((n) => {
@@ -3127,14 +3123,14 @@ let y = class extends R {
     return o.sort((n, r) => {
       const a = n.entity_id, l = r.entity_id;
       if (t === "switch") {
-        const p = a.includes("adaptive_lighting") ? 0 : 1, g = l.includes("adaptive_lighting") ? 0 : 1;
-        if (p !== g) return p - g;
+        const d = a.includes("adaptive_lighting") ? 0 : 1, g = l.includes("adaptive_lighting") ? 0 : 1;
+        if (d !== g) return d - g;
       } else if (!t) {
-        const p = (b) => b.startsWith("light.") ? 0 : b.startsWith("group.") ? 1 : 2, g = p(a), _ = p(l);
+        const d = (b) => b.startsWith("light.") ? 0 : b.startsWith("group.") ? 1 : 2, g = d(a), _ = d(l);
         if (g !== _) return g - _;
       }
-      const h = String(n.attributes?.friendly_name || a).toLowerCase(), d = String(r.attributes?.friendly_name || l).toLowerCase();
-      return h.localeCompare(d);
+      const h = String(n.attributes?.friendly_name || a).toLowerCase(), p = String(r.attributes?.friendly_name || l).toLowerCase();
+      return h.localeCompare(p);
     }), o;
   }
   _setMainEntities(e) {
@@ -3143,34 +3139,34 @@ let y = class extends R {
     this._config = {
       ...this._config,
       entity: i
-    }, E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    }, A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _toggleMainEntity(e) {
-    const t = D(this._config?.entity);
+    const t = R(this._config?.entity);
     t.includes(e) ? this._setMainEntities(t.filter((i) => i !== e)) : this._setMainEntities([...t, e]);
   }
   _removeMainEntity(e) {
-    const t = D(this._config?.entity);
+    const t = R(this._config?.entity);
     this._setMainEntities(t.filter((i) => i !== e));
   }
   _selectAdaptiveEntity(e) {
     if (!this._config) return;
     const t = { ...this._config };
-    e ? t.adaptive_lighting_entity = e : delete t.adaptive_lighting_entity, this._config = t, this._adaptiveSearch = "", this._adaptiveDropdownOpen = !1, E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    e ? t.adaptive_lighting_entity = e : delete t.adaptive_lighting_entity, this._config = t, this._adaptiveSearch = "", this._adaptiveDropdownOpen = !1, A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _getEffectiveSelectionEntities() {
-    return this._config ? Array.isArray(this._config.entities) ? this._config.entities : ue(this._config.entity, this.hass?.states) : [];
+    return this._config ? Array.isArray(this._config.entities) ? this._config.entities : fe(this._config.entity, this.hass?.states) : [];
   }
   _commitSelectionEntities(e) {
     this._config && (this._config = {
       ...this._config,
       entities: e
-    }, E(this, "config-changed", { config: this._config }), this.requestUpdate());
+    }, A(this, "config-changed", { config: this._config }), this.requestUpdate());
   }
   _resetSelectionEntitiesToDefault() {
     if (!this._config) return;
     const e = { ...this._config };
-    delete e.entities, this._config = e, E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    delete e.entities, this._config = e, A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _startReorderDrag(e, t, i) {
     i.button === 0 && (i.preventDefault(), i.stopPropagation(), this._dragReorderList = e, this._dragReorderIndex = t, this._dragOverIndex = t, window.removeEventListener("pointermove", this._onReorderMoveBound), window.removeEventListener("pointerup", this._onReorderUpBound), window.removeEventListener("pointercancel", this._onReorderUpBound), window.addEventListener("pointermove", this._onReorderMoveBound), window.addEventListener("pointerup", this._onReorderUpBound), window.addEventListener("pointercancel", this._onReorderUpBound));
@@ -3291,7 +3287,7 @@ let y = class extends R {
       !this._config || typeof s.result != "string" || (this._config = {
         ...this._config,
         light_selection_image: s.result
-      }, E(this, "config-changed", { config: this._config }), this.requestUpdate());
+      }, A(this, "config-changed", { config: this._config }), this.requestUpdate());
     }, s.onerror = () => {
       this._uploadError = "Failed to read the selected image file.";
     }, s.readAsDataURL(e);
@@ -3308,7 +3304,7 @@ let y = class extends R {
   _clearImage() {
     if (!this._config) return;
     const e = { ...this._config };
-    delete e.light_selection_image, delete e.light_image, delete e.image, delete e.floorplan_image, this._config = e, this._uploadError = "", E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    delete e.light_selection_image, delete e.light_image, delete e.image, delete e.floorplan_image, this._config = e, this._uploadError = "", A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _addCustomToggle() {
     if (!this._config) return;
@@ -3323,7 +3319,7 @@ let y = class extends R {
     s.push(i), this._config = {
       ...this._config,
       custom_toggles: s
-    }, this._newToggleEntities = "", this._newToggleIcon = "", this._newToggleName = "", E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    }, this._newToggleEntities = "", this._newToggleIcon = "", this._newToggleName = "", A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _removeCustomToggle(e) {
     if (!this._config || !Array.isArray(this._config.custom_toggles)) return;
@@ -3331,7 +3327,7 @@ let y = class extends R {
     this._config = {
       ...this._config,
       custom_toggles: t.length > 0 ? t : void 0
-    }, E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    }, A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   /* ---- Main Presets CRUD ---- */
   _getEffectivePresets() {
@@ -3341,12 +3337,12 @@ let y = class extends R {
     this._config && (this._config = {
       ...this._config,
       presets: e
-    }, E(this, "config-changed", { config: this._config }), this.requestUpdate());
+    }, A(this, "config-changed", { config: this._config }), this.requestUpdate());
   }
   _resetPresetsToDefault() {
     if (!this._config) return;
     const e = { ...this._config };
-    delete e.presets, this._config = e, E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    delete e.presets, this._config = e, A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _removePreset(e) {
     const t = this._getEffectivePresets().filter((i, s) => s !== e);
@@ -3377,7 +3373,7 @@ let y = class extends R {
     }
   }
   _updatePresetRgb(e, t) {
-    const i = O(t);
+    const i = D(t);
     if (!i) return;
     const s = this._getEffectivePresets().map((n) => ({ ...n })), o = s[e];
     o && (o.rgb = [i.r, i.g, i.b], delete o.rgb_color, delete o.color, this._commitPresets(s));
@@ -3391,7 +3387,7 @@ let y = class extends R {
     return !!(this._config && (this._config.brightness_presets !== void 0 || this._config.subpresets?.brightness !== void 0));
   }
   _getEffectiveBrightnessSubpresets() {
-    return (this._config?.brightness_presets ?? this._config?.subpresets?.brightness ?? de).map(
+    return (this._config?.brightness_presets ?? this._config?.subpresets?.brightness ?? pe).map(
       (t) => typeof t == "number" ? { value: t } : { value: t.value, label: t.label }
     );
   }
@@ -3407,7 +3403,7 @@ let y = class extends R {
       const s = { ...i.subpresets };
       delete s.brightness, i.subpresets = s;
     }
-    this._config = i, E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    this._config = i, A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _resetBrightnessSubpresets() {
     if (!this._config) return;
@@ -3416,7 +3412,7 @@ let y = class extends R {
       const t = { ...e.subpresets };
       delete t.brightness, e.subpresets = Object.keys(t).length > 0 ? t : void 0;
     }
-    this._config = e, E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    this._config = e, A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _updateBrightnessSubpreset(e, t, i) {
     const s = this._getEffectiveBrightnessSubpresets();
@@ -3439,7 +3435,7 @@ let y = class extends R {
     return !!(this._config && (this._config.temperature_presets !== void 0 || this._config.temp_presets !== void 0 || this._config.subpresets?.temperature !== void 0 || this._config.subpresets?.temp !== void 0));
   }
   _getEffectiveTempSubpresets() {
-    return (this._config?.temperature_presets ?? this._config?.temp_presets ?? this._config?.subpresets?.temperature ?? this._config?.subpresets?.temp ?? pe).map(
+    return (this._config?.temperature_presets ?? this._config?.temp_presets ?? this._config?.subpresets?.temperature ?? this._config?.subpresets?.temp ?? ge).map(
       (t) => typeof t == "number" ? { kelvin: t } : { kelvin: t.kelvin, label: t.label }
     );
   }
@@ -3455,7 +3451,7 @@ let y = class extends R {
       const s = { ...i.subpresets };
       delete s.temperature, delete s.temp, i.subpresets = s;
     }
-    this._config = i, E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    this._config = i, A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _resetTempSubpresets() {
     if (!this._config) return;
@@ -3464,7 +3460,7 @@ let y = class extends R {
       const t = { ...e.subpresets };
       delete t.temperature, delete t.temp, e.subpresets = Object.keys(t).length > 0 ? t : void 0;
     }
-    this._config = e, E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    this._config = e, A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _updateTempSubpreset(e, t, i) {
     const s = this._getEffectiveTempSubpresets();
@@ -3487,7 +3483,7 @@ let y = class extends R {
     return !!(this._config && (this._config.color_presets !== void 0 || this._config.subpresets?.color !== void 0));
   }
   _getEffectiveColorSubpresets() {
-    return (this._config?.color_presets ?? this._config?.subpresets?.color ?? ge).map(
+    return (this._config?.color_presets ?? this._config?.subpresets?.color ?? ue).map(
       (t) => typeof t == "string" ? { color: t } : { color: t.color, label: t.label }
     );
   }
@@ -3503,7 +3499,7 @@ let y = class extends R {
       const s = { ...i.subpresets };
       delete s.color, i.subpresets = s;
     }
-    this._config = i, E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    this._config = i, A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _resetColorSubpresets() {
     if (!this._config) return;
@@ -3512,7 +3508,7 @@ let y = class extends R {
       const t = { ...e.subpresets };
       delete t.color, e.subpresets = Object.keys(t).length > 0 ? t : void 0;
     }
-    this._config = e, E(this, "config-changed", { config: this._config }), this.requestUpdate();
+    this._config = e, A(this, "config-changed", { config: this._config }), this.requestUpdate();
   }
   _updateColorSubpreset(e, t, i) {
     const s = this._getEffectiveColorSubpresets();
@@ -3528,7 +3524,7 @@ let y = class extends R {
   }
   _renderMainEntityPicker() {
     if (!this._config) return c``;
-    const e = D(this._config.entity), t = this._getFilteredHassEntities(this._mainEntitySearch).slice(0, 80);
+    const e = R(this._config.entity), t = this._getFilteredHassEntities(this._mainEntitySearch).slice(0, 80);
     return c`
       <div class="form-row">
         <label>Entity (Required — Select one or multiple)</label>
@@ -3765,10 +3761,10 @@ let y = class extends R {
 
         <div class="entity-list" data-reorder-list="presets">
           ${e.length > 0 ? e.map((n, r) => {
-      const a = ft(n), l = a ? vt(a.r, a.g, a.b) : "", h = this._dragReorderList === "presets" && this._dragReorderIndex === r, p = this._dragReorderList === "presets" && this._dragReorderIndex !== null && this._dragOverIndex === r && this._dragReorderIndex !== r ? this._dragReorderIndex < r ? "drop-after" : "drop-before" : "";
+      const a = ft(n), l = a ? vt(a.r, a.g, a.b) : "", h = this._dragReorderList === "presets" && this._dragReorderIndex === r, d = this._dragReorderList === "presets" && this._dragReorderIndex !== null && this._dragOverIndex === r && this._dragReorderIndex !== r ? this._dragReorderIndex < r ? "drop-after" : "drop-before" : "";
       return c`
                   <div
-                    class="entity-item-row light-edit-row ${h ? "is-dragging-row" : ""} ${p}"
+                    class="entity-item-row light-edit-row ${h ? "is-dragging-row" : ""} ${d}"
                     data-reorder-idx=${r}
                   >
                     <div class="entity-row-top">
@@ -4083,7 +4079,7 @@ let y = class extends R {
                   style="width: 66px;"
                   .value=${n.label ?? n.color}
                   @change=${(a) => {
-        const l = a.target.value.trim(), h = O(l);
+        const l = a.target.value.trim(), h = D(l);
         h ? this._updateColorSubpreset(r, vt(h.r, h.g, h.b)) : this._updateColorSubpreset(r, n.color, l);
       }}
                   title="Hex color or custom label"
@@ -4571,7 +4567,7 @@ let y = class extends R {
       const e = this._getEffectiveSelectionEntities(), t = this._getFilteredHassEntities(this._addLightSearch).slice(0, 60);
       return c`
                 ${e.length > 0 ? e.map((i, s) => {
-        const o = typeof i == "string" ? i : i.entity, n = typeof i == "object" ? i.name : void 0, r = typeof i == "object" ? i.icon : void 0, a = typeof i == "object" ? i.x ?? i.x_position ?? i.left : void 0, l = typeof i == "object" ? i.y ?? i.y_position ?? i.top : void 0, h = this.hass?.states[o], d = h?.attributes?.friendly_name || o.replace(/^[^.]+\./, "").replace(/_/g, " "), p = h?.attributes?.icon || "mdi:lightbulb", g = this._dragReorderList === "lights" && this._dragReorderIndex === s, b = this._dragReorderList === "lights" && this._dragReorderIndex !== null && this._dragOverIndex === s && this._dragReorderIndex !== s ? this._dragReorderIndex < s ? "drop-after" : "drop-before" : "";
+        const o = typeof i == "string" ? i : i.entity, n = typeof i == "object" ? i.name : void 0, r = typeof i == "object" ? i.icon : void 0, a = typeof i == "object" ? i.x ?? i.x_position ?? i.left : void 0, l = typeof i == "object" ? i.y ?? i.y_position ?? i.top : void 0, h = this.hass?.states[o], p = h?.attributes?.friendly_name || o.replace(/^[^.]+\./, "").replace(/_/g, " "), d = h?.attributes?.icon || "mdi:lightbulb", g = this._dragReorderList === "lights" && this._dragReorderIndex === s, b = this._dragReorderList === "lights" && this._dragReorderIndex !== null && this._dragOverIndex === s && this._dragReorderIndex !== s ? this._dragReorderIndex < s ? "drop-after" : "drop-before" : "";
         return c`
                         <div
                           class="entity-item-row light-edit-row ${g ? "is-dragging-row" : ""} ${b}"
@@ -4583,16 +4579,16 @@ let y = class extends R {
                               type="text"
                               class="entity-label-input"
                               .value=${n ?? ""}
-                              @input=${($) => this._updateEntityField(s, "name", $.target.value)}
-                              placeholder=${d}
+                              @input=${(S) => this._updateEntityField(s, "name", S.target.value)}
+                              placeholder=${p}
                               title="Hand-editable display label (leave blank for default)"
                             />
                             <input
                               type="text"
                               class="entity-icon-input"
                               .value=${r ?? ""}
-                              @input=${($) => this._updateEntityField(s, "icon", $.target.value)}
-                              placeholder=${p}
+                              @input=${(S) => this._updateEntityField(s, "icon", S.target.value)}
+                              placeholder=${d}
                               title="Optional MDI icon (e.g. mdi:lamp)"
                             />
                             <div class="entity-item-actions">
@@ -4618,7 +4614,7 @@ let y = class extends R {
                                   max="100"
                                   step="1"
                                   .value=${a !== void 0 ? String(a) : ""}
-                                  @change=${($) => this._updateEntityCoord(s, "x", $)}
+                                  @change=${(S) => this._updateEntityCoord(s, "x", S)}
                                   placeholder="auto"
                                   title="X position on image (0 - 100%)"
                                 />
@@ -4631,7 +4627,7 @@ let y = class extends R {
                                   max="100"
                                   step="1"
                                   .value=${l !== void 0 ? String(l) : ""}
-                                  @change=${($) => this._updateEntityCoord(s, "y", $)}
+                                  @change=${(S) => this._updateEntityCoord(s, "y", S)}
                                   placeholder="auto"
                                   title="Y position on image (0 - 100%)"
                                 />
@@ -5469,64 +5465,64 @@ y.styles = rt`
       pointer-events: none;
     }
   `;
-S([
+E([
   m({ attribute: !1 })
 ], y.prototype, "hass", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_config", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_mainEntitySearch", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_mainEntityDropdownOpen", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_adaptiveSearch", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_adaptiveDropdownOpen", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_addLightSearch", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_addLightDropdownOpen", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_uploadError", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_isDraggingFile", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_newToggleEntities", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_newToggleIcon", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_newToggleName", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_newBrightnessSubpreset", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_newTempSubpreset", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_newColorSubpreset", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_dragReorderList", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_dragReorderIndex", 2);
-S([
-  f()
+E([
+  u()
 ], y.prototype, "_dragOverIndex", 2);
-y = S([
+y = E([
   at("ha-light-card-editor")
 ], y);
 const ri = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
