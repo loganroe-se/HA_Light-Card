@@ -183,6 +183,8 @@ presets:
 | `show_light_selection` | `boolean` | `false` | Enable or disable the interactive light selection shelf above the card (alias `enable_light_selection`). |
 | `entities` | `list` | Auto-resolved from `entity` | Array of child entities (`string` or `{entity, name?, icon?, show_label?, x?, y?}`) with hand-editable labels and optional X%/Y% image positions (0-100%). Defaults automatically populate from selected entities/groups. |
 | `light_selection_image` | `string` | `undefined` | Uploaded background image (JPEG, PNG, WebP, GIF, SVG) or URL/path (`/local/...`) to overlay light icons onto (alias `light_image`, `image`, `floorplan_image`). If omitted, uses standard horizontal shelf layout. |
+| `light_selection_image_height` | `number \| string` | `undefined` | Optional fixed canvas height in pixels (e.g. `250`). When omitted, height matches the image's natural aspect ratio. (Alias `image_height`). |
+| `light_selection_image_fit` | `string` | `fill` | How the image fits when a fixed height is defined: `fill` (`cover` crop to fill), `contain` (fit inside preserving aspect ratio), or `stretch` (stretch to exact dimensions). (Alias `image_fit`). |
 | `light_label_mode` | `string` | `always` | Display mode for light labels: `always` (always show), `hover` (show on hover), `selected` (show only when selected), `never` (never show). |
 | `vibrate` | `boolean` | `false` | Enable or disable haptic vibration feedback on mobile when hold-to-drag selection engages (alias `enable_vibrate`, `haptic`). Default: `false`. |
 

@@ -8,7 +8,9 @@ import {
   DEFAULT_BRIGHTNESS_SUBPRESETS, DEFAULT_TEMPERATURE_SUBPRESETS, DEFAULT_COLOR_SUBPRESETS,
   CustomToggleConfig,
   getMainEntityIds,
-  resolveDefaultSelectionEntities
+  resolveDefaultSelectionEntities,
+  resolveImageCanvasHeight,
+  resolveImageObjectFit
 } from "./light-card-config";
 import { SliderMode, ColorTextFormat, formatSubtitle, throttle } from "../../utils/format";
 import { ICONS, renderIcon, resolvePresetIcon, renderSvgIcon } from "../../utils/icons";
@@ -92,10 +94,14 @@ export class HaLightCard extends LitElement implements LovelaceCard {
   @state()
   private _selectionBox: { x: number; y: number; width: number; height: number } | null = null;
 
+  @state()
+  private _imageLightRegions: Record<string, boolean> = {};
+
   private _clickTimer: any = null;
   private _lastClickedEntity: string | null = null;
   private _blurTimer: any = null;
   private _prevAvailableIdsKey = "";
+  private _lastImageAnalysisKey = "";
 
   private _dragStartPos: { x: number; y: number } | null = null;
   private _dragContainerRect: DOMRect | null = null;
@@ -261,6 +267,142 @@ export class HaLightCard extends LitElement implements LovelaceCard {
 
     if (availableModes.length > 0 && !availableModes.includes(this._mode)) {
       this._mode = availableModes[0];
+    }
+  }
+
+  private _getImageCanvasHeight(): string | undefined {
+    return resolveImageCanvasHeight(
+      this._config?.light_selection_image_height ?? this._config?.image_height
+    );
+  }
+
+  private _getImageObjectFit(): "contain" | "cover" | "fill" {
+    return resolveImageObjectFit(
+      this._config?.light_selection_image_fit ?? this._config?.image_fit
+    );
+  }
+
+  protected override updated(changedProperties: PropertyValues): void {
+    super.updated(changedProperties);
+    const bgImage = this._getLightSelectionImage();
+    const isSelectionEnabled = Boolean(
+      this._config?.show_light_selection || this._config?.enable_light_selection
+    );
+    if (isSelectionEnabled && bgImage) {
+      const lights = this._getAvailableEntities();
+      const h = this._getImageCanvasHeight() || "";
+      const fit = this._getImageObjectFit();
+      const analysisKey = `${bgImage}|${h}|${fit}|${lights.map((l) => `${l.entity}:${l.x ?? ""},${l.y ?? ""}`).join(";")}`;
+      if (analysisKey !== this._lastImageAnalysisKey) {
+        const img = this.shadowRoot?.querySelector<HTMLImageElement>(".light-selection-image");
+        if (img && img.complete && img.naturalWidth > 0) {
+          this._analyzeSelectionImage(img, analysisKey);
+        }
+      }
+    } else if (this._lastImageAnalysisKey !== "") {
+      this._lastImageAnalysisKey = "";
+      this._imageLightRegions = {};
+    }
+  }
+
+  private _analyzeSelectionImage(img: HTMLImageElement, forceKey?: string): void {
+    if (!img || !img.complete || img.naturalWidth === 0) return;
+    const lights = this._getAvailableEntities();
+    if (!lights.length) return;
+
+    const bgImage = this._getLightSelectionImage() || img.src;
+    const h = this._getImageCanvasHeight();
+    const fit = h ? this._getImageObjectFit() : "cover";
+    const analysisKey =
+      forceKey || `${bgImage}|${h || ""}|${fit}|${lights.map((l) => `${l.entity}:${l.x ?? ""},${l.y ?? ""}`).join(";")}`;
+    this._lastImageAnalysisKey = analysisKey;
+
+    try {
+      const canvas = document.createElement("canvas");
+      const dispW = img.clientWidth || img.naturalWidth;
+      const dispH = img.clientHeight || img.naturalHeight;
+      const sampleW = 200;
+      const sampleH = Math.max(40, Math.min(400, Math.round(sampleW * (dispH / Math.max(1, dispW)))));
+      canvas.width = sampleW;
+      canvas.height = sampleH;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+
+      ctx.fillStyle = "#18181b";
+      ctx.fillRect(0, 0, sampleW, sampleH);
+
+      let drawX = 0;
+      let drawY = 0;
+      let drawW = sampleW;
+      let drawH = sampleH;
+
+      if (h && fit === "contain") {
+        const scale = Math.min(sampleW / img.naturalWidth, sampleH / img.naturalHeight);
+        drawW = img.naturalWidth * scale;
+        drawH = img.naturalHeight * scale;
+        drawX = (sampleW - drawW) / 2;
+        drawY = (sampleH - drawH) / 2;
+      } else if (h && fit === "cover") {
+        const scale = Math.max(sampleW / img.naturalWidth, sampleH / img.naturalHeight);
+        drawW = img.naturalWidth * scale;
+        drawH = img.naturalHeight * scale;
+        drawX = (sampleW - drawW) / 2;
+        drawY = (sampleH - drawH) / 2;
+      }
+
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+      const imgData = ctx.getImageData(0, 0, sampleW, sampleH).data;
+
+      const getRegionLuminance = (x0: number, y0: number, x1: number, y1: number) => {
+        const minX = Math.max(0, Math.floor(x0));
+        const minY = Math.max(0, Math.floor(y0));
+        const maxX = Math.min(sampleW - 1, Math.ceil(x1));
+        const maxY = Math.min(sampleH - 1, Math.ceil(y1));
+        let totalLum = 0;
+        let count = 0;
+        for (let y = minY; y <= maxY; y++) {
+          for (let x = minX; x <= maxX; x++) {
+            const idx = (y * sampleW + x) * 4;
+            const r = imgData[idx];
+            const g = imgData[idx + 1];
+            const b = imgData[idx + 2];
+            const a = imgData[idx + 3] / 255;
+            const effR = r * a + 24 * (1 - a);
+            const effG = g * a + 24 * (1 - a);
+            const effB = b * a + 24 * (1 - a);
+            totalLum += 0.299 * effR + 0.587 * effG + 0.114 * effB;
+            count++;
+          }
+        }
+        return count > 0 ? totalLum / count : 0;
+      };
+
+      const nextMap: Record<string, boolean> = {};
+      lights.forEach((light, index) => {
+        const posX =
+          light.x !== undefined
+            ? light.x
+            : lights.length > 1
+            ? Math.round((100 / (lights.length + 1)) * (index + 1))
+            : 50;
+        const posY = light.y !== undefined ? light.y : 50;
+
+        const cx = (posX / 100) * sampleW;
+        const cy = (posY / 100) * sampleH;
+        const radiusX = sampleW * 0.1;
+        const radiusY = sampleH * 0.12;
+        const lum = getRegionLuminance(
+          cx - radiusX,
+          cy - radiusY * 0.4,
+          cx + radiusX,
+          cy + radiusY * 1.3
+        );
+        nextMap[light.entity] = lum > 140;
+      });
+
+      this._imageLightRegions = nextMap;
+    } catch (_) {
+      this._imageLightRegions = {};
     }
   }
 
@@ -1541,19 +1683,46 @@ export class HaLightCard extends LitElement implements LovelaceCard {
       padding: 3px 8px;
       border-radius: 6px;
       background: #27272a;
-      border: 1px solid rgba(255, 255, 255, 0.10);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       color: #ffffff;
       font-size: 11px;
       font-weight: 600;
       line-height: 1.2;
       white-space: nowrap;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-      transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+      transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
     }
 
     .light-item.selected .light-label-badge {
-      background: rgba(255, 255, 255, 0.16);
-      border-color: rgba(255, 255, 255, 0.22);
+      background: #35353c;
+      border-color: rgba(255, 255, 255, 0.30);
+      color: #ffffff;
+    }
+
+    .light-item.bg-is-light .light-label-badge {
+      background: rgba(24, 24, 27, 0.88);
+      border-color: rgba(0, 0, 0, 0.25);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.30);
+    }
+
+    .light-item.bg-is-light.selected .light-label-badge {
+      background: #18181b;
+      border-color: rgba(245, 158, 11, 0.85);
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.42);
+    }
+
+    .light-item.bg-is-light.light-off .light-circle-btn {
+      background-color: rgba(24, 24, 27, 0.72);
+      border: 1px solid rgba(0, 0, 0, 0.25);
+      color: #d4d4d8;
+    }
+
+    .light-item.bg-is-light.selected.light-off .light-circle-btn {
+      background-color: rgba(24, 24, 27, 0.88);
+      border: 2px solid rgba(245, 158, 11, 0.9);
+      color: #ffffff;
     }
 
     /* Label Modes: always, hover, selected, never */
@@ -2056,15 +2225,25 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     const bgImage = this._getLightSelectionImage();
 
     if (bgImage) {
+      const canvasHeight = this._getImageCanvasHeight();
+      const imageFit = this._getImageObjectFit();
+      const containerStyle = canvasHeight ? `height: ${canvasHeight};` : "";
+      const imgStyle = canvasHeight
+        ? `height: 100%; max-height: none; object-fit: ${imageFit};`
+        : "";
+
       return html`
         <div
           class="light-selection-section has-image ${this._isDragSelecting ? "is-drag-selecting" : ""}"
+          style="${containerStyle}"
           @pointerdown=${this._onSelectionPointerDown}
         >
           <img
             class="light-selection-image"
             src="${bgImage}"
+            style="${imgStyle}"
             alt="Light selection floorplan"
+            @load=${(e: Event) => this._analyzeSelectionImage(e.target as HTMLImageElement)}
           />
           <div class="light-selection-overlay">
             ${lights.map((light, index) => {
@@ -2143,9 +2322,11 @@ export class HaLightCard extends LitElement implements LovelaceCard {
         ? `left: ${posX}%; top: ${posY}%;`
         : "";
 
+    const isLightBg = isOverlay && Boolean(this._imageLightRegions[light.entity]);
+
     return html`
       <div
-        class="light-item ${isSelected ? "selected" : "unselected"} ${isOn ? "light-on" : "light-off"} mode-${labelMode}"
+        class="light-item ${isSelected ? "selected" : "unselected"} ${isOn ? "light-on" : "light-off"} ${isLightBg ? "bg-is-light" : ""} mode-${labelMode}"
         data-entity="${light.entity}"
         style="${overlayStyle}"
         @click=${(e: MouseEvent) => this._handleLightClick(light.entity, e)}

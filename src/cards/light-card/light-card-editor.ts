@@ -2,12 +2,15 @@ import { LitElement, html, css } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { HomeAssistant, LovelaceCardEditor } from "../../ha/types";
 import { fireEvent } from "../../ha/fire-event";
+import { ICONS, renderIcon } from "../../utils/icons";
 import {
   LightCardConfig,
   CustomToggleConfig,
   LightEntityConfig,
   getMainEntityIds,
-  resolveDefaultSelectionEntities
+  resolveDefaultSelectionEntities,
+  resolveImageCanvasHeight,
+  resolveImageObjectFit
 } from "./light-card-config";
 
 const SUPPORTED_IMAGE_TYPES = new Set([
@@ -59,6 +62,23 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
 
   @state()
   private _newToggleName = "";
+
+  @state()
+  private _dragEntityIdx: number | null = null;
+
+  @state()
+  private _dragEntityCoords: { x: number; y: number } | null = null;
+
+  private _dragGrabOffset = { dx: 0, dy: 0 };
+  private _onEditorDragMoveBound = (e: PointerEvent) => this._onEditorOrbDragMove(e);
+  private _onEditorDragEndBound = (e: PointerEvent) => this._onEditorOrbDragEnd(e);
+
+  public override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener("pointermove", this._onEditorDragMoveBound);
+    window.removeEventListener("pointerup", this._onEditorDragEndBound);
+    window.removeEventListener("pointercancel", this._onEditorDragEndBound);
+  }
 
   public setConfig(config: LightCardConfig): void {
     this._config = config;
@@ -257,6 +277,96 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
       list[index] = updated;
     }
     this._commitSelectionEntities(list);
+  }
+
+  private _setEntityCoords(index: number, x: number, y: number): void {
+    const list = [...this._getEffectiveSelectionEntities()];
+    const current = list[index];
+    if (current === undefined) return;
+
+    const clampedX = Math.round(Math.max(0, Math.min(100, x)));
+    const clampedY = Math.round(Math.max(0, Math.min(100, y)));
+
+    if (typeof current === "string") {
+      list[index] = {
+        entity: current,
+        x: clampedX,
+        y: clampedY
+      };
+    } else {
+      list[index] = {
+        ...current,
+        x: clampedX,
+        y: clampedY
+      };
+    }
+    this._commitSelectionEntities(list);
+  }
+
+  private _onEditorOrbDragStart(index: number, curX: number, curY: number, e: PointerEvent): void {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const stage = this.shadowRoot?.querySelector<HTMLElement>(".editor-image-stage");
+    if (!stage) return;
+
+    const rect = stage.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const centerPxX = rect.left + (curX / 100) * rect.width;
+    const centerPxY = rect.top + (curY / 100) * rect.height;
+    this._dragGrabOffset = {
+      dx: e.clientX - centerPxX,
+      dy: e.clientY - centerPxY
+    };
+
+    this._dragEntityIdx = index;
+    this._dragEntityCoords = { x: curX, y: curY };
+
+    window.removeEventListener("pointermove", this._onEditorDragMoveBound);
+    window.removeEventListener("pointerup", this._onEditorDragEndBound);
+    window.removeEventListener("pointercancel", this._onEditorDragEndBound);
+
+    window.addEventListener("pointermove", this._onEditorDragMoveBound);
+    window.addEventListener("pointerup", this._onEditorDragEndBound);
+    window.addEventListener("pointercancel", this._onEditorDragEndBound);
+  }
+
+  private _onEditorOrbDragMove(e: PointerEvent): void {
+    if (this._dragEntityIdx === null) return;
+    e.preventDefault();
+
+    const stage = this.shadowRoot?.querySelector<HTMLElement>(".editor-image-stage");
+    if (!stage) return;
+
+    const rect = stage.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const centerPxX = e.clientX - this._dragGrabOffset.dx;
+    const centerPxY = e.clientY - this._dragGrabOffset.dy;
+
+    const x = Math.round(Math.max(0, Math.min(100, ((centerPxX - rect.left) / rect.width) * 100)));
+    const y = Math.round(Math.max(0, Math.min(100, ((centerPxY - rect.top) / rect.height) * 100)));
+
+    this._dragEntityCoords = { x, y };
+  }
+
+  private _onEditorOrbDragEnd(_e: PointerEvent): void {
+    window.removeEventListener("pointermove", this._onEditorDragMoveBound);
+    window.removeEventListener("pointerup", this._onEditorDragEndBound);
+    window.removeEventListener("pointercancel", this._onEditorDragEndBound);
+
+    if (this._dragEntityIdx !== null && this._dragEntityCoords) {
+      const idx = this._dragEntityIdx;
+      const { x, y } = this._dragEntityCoords;
+      this._dragEntityIdx = null;
+      this._dragEntityCoords = null;
+      this._setEntityCoords(idx, x, y);
+    } else {
+      this._dragEntityIdx = null;
+      this._dragEntityCoords = null;
+    }
   }
 
   private _removeEntity(index: number): void {
@@ -873,6 +983,114 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
       color: #f87171;
       margin-top: 2px;
     }
+
+    .editor-image-placer {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .editor-placer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .editor-drag-readout {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(245, 158, 11, 0.18);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fde68a;
+    }
+
+    .editor-image-stage {
+      position: relative;
+      width: 100%;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: #18181b;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      line-height: 0;
+    }
+
+    .editor-stage-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      pointer-events: none;
+      user-select: none;
+      max-height: 360px;
+      object-fit: cover;
+    }
+
+    .editor-drag-orb {
+      position: absolute;
+      transform: translate(-50%, -19px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: grab;
+      z-index: 2;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .editor-drag-orb:hover {
+      z-index: 5;
+    }
+
+    .editor-drag-orb.is-dragging {
+      cursor: grabbing;
+      z-index: 10;
+    }
+
+    .editor-orb-circle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #fed166;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 0 14px rgba(254, 209, 102, 0.5);
+      border: 2px solid rgba(255, 255, 255, 0.85);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .editor-drag-orb.is-dragging .editor-orb-circle {
+      transform: scale(1.14);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65), 0 0 22px rgba(245, 158, 11, 0.85);
+      border-color: #ffffff;
+    }
+
+    .editor-orb-circle svg,
+    .editor-orb-circle ha-icon {
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+    }
+
+    .editor-orb-badge {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: rgba(24, 24, 27, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+      pointer-events: none;
+    }
   `;
 
   private _renderMainEntityPicker() {
@@ -1108,6 +1326,131 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                 </div>
               `
             : null}
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderInteractiveImagePlacer() {
+    if (!this._config) return null;
+    const bgImage =
+      this._config.light_selection_image ||
+      this._config.light_image ||
+      this._config.image ||
+      this._config.floorplan_image;
+    if (!bgImage) return null;
+
+    const effectiveList = this._getEffectiveSelectionEntities();
+    if (effectiveList.length === 0) return null;
+
+    const dragItem =
+      this._dragEntityIdx !== null ? effectiveList[this._dragEntityIdx] : undefined;
+    const dragEntityId =
+      dragItem !== undefined
+        ? typeof dragItem === "string"
+          ? dragItem
+          : dragItem.entity
+        : "";
+    const dragLabel =
+      dragItem !== undefined && typeof dragItem === "object" && dragItem.name
+        ? dragItem.name
+        : this.hass?.states[dragEntityId]?.attributes?.friendly_name ||
+          dragEntityId.replace(/^[^.]+\./, "").replace(/_/g, " ");
+
+    const canvasHeight = resolveImageCanvasHeight(
+      this._config.light_selection_image_height ?? this._config.image_height
+    );
+    const imageFit = resolveImageObjectFit(
+      this._config.light_selection_image_fit ?? this._config.image_fit
+    );
+    const stageStyle = canvasHeight ? `height: ${canvasHeight};` : "";
+    const stageImgStyle = canvasHeight
+      ? `height: 100%; max-height: none; object-fit: ${imageFit};`
+      : "";
+
+    return html`
+      <div class="editor-image-placer">
+        <div class="editor-placer-header">
+          <label style="font-size: 13px; font-weight: 600;">Drag Icons on Image to Reposition</label>
+          ${this._dragEntityIdx !== null && this._dragEntityCoords
+            ? html`
+                <span class="editor-drag-readout">
+                  ${dragLabel}: X ${this._dragEntityCoords.x}% • Y ${this._dragEntityCoords.y}%
+                </span>
+              `
+            : html`
+                <span style="font-size: 11px; color: var(--secondary-text-color, #9ca3af);">
+                  Syncs with X% / Y% below
+                </span>
+              `}
+        </div>
+        <div class="editor-image-stage" style="${stageStyle}">
+          <img class="editor-stage-img" src="${bgImage}" style="${stageImgStyle}" alt="Interactive position map" />
+          ${effectiveList.map((item, idx) => {
+            const entityId = typeof item === "string" ? item : item.entity;
+            const customName = typeof item === "object" ? item.name : undefined;
+            const customIcon = typeof item === "object" ? item.icon : undefined;
+            const stateObj = this.hass?.states[entityId];
+            const label =
+              customName ||
+              stateObj?.attributes?.friendly_name ||
+              entityId.replace(/^[^.]+\./, "").replace(/_/g, " ");
+            const iconPath = customIcon || stateObj?.attributes?.icon;
+
+            const rawX =
+              typeof item === "object"
+                ? (item.x ?? (item as any).x_position ?? (item as any).left)
+                : undefined;
+            const rawY =
+              typeof item === "object"
+                ? (item.y ?? (item as any).y_position ?? (item as any).top)
+                : undefined;
+
+            const parsedX =
+              typeof rawX === "number"
+                ? rawX
+                : typeof rawX === "string" && (rawX as string).trim() !== ""
+                ? parseFloat(rawX)
+                : undefined;
+            const parsedY =
+              typeof rawY === "number"
+                ? rawY
+                : typeof rawY === "string" && (rawY as string).trim() !== ""
+                ? parseFloat(rawY)
+                : undefined;
+
+            const defaultX =
+              effectiveList.length > 1
+                ? Math.round((100 / (effectiveList.length + 1)) * (idx + 1))
+                : 50;
+            const defaultY = 50;
+
+            const isDraggingThis = this._dragEntityIdx === idx && this._dragEntityCoords !== null;
+            const posX = isDraggingThis
+              ? this._dragEntityCoords!.x
+              : parsedX !== undefined && !isNaN(parsedX)
+              ? Math.max(0, Math.min(100, parsedX))
+              : defaultX;
+            const posY = isDraggingThis
+              ? this._dragEntityCoords!.y
+              : parsedY !== undefined && !isNaN(parsedY)
+              ? Math.max(0, Math.min(100, parsedY))
+              : defaultY;
+
+            return html`
+              <div
+                class="editor-drag-orb ${isDraggingThis ? "is-dragging" : ""}"
+                style="left: ${posX}%; top: ${posY}%;"
+                @pointerdown=${(e: PointerEvent) => this._onEditorOrbDragStart(idx, posX, posY, e)}
+                title="Drag ${label} (${posX}%, ${posY}%)"
+              >
+                <div class="editor-orb-circle">
+                  ${renderIcon(iconPath, ICONS.lightbulb, 20)}
+                </div>
+                <span class="editor-orb-badge">${label}</span>
+              </div>
+            `;
+          })}
         </div>
       </div>
     `;
@@ -1534,6 +1877,51 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
           <div style="font-size: 11px; color: var(--secondary-text-color, #9ca3af);">
             When an image is set, lights overlay onto it at their X% / Y% coordinates (0 - 100%).
           </div>
+
+          ${(() => {
+            const rawHeight = this._config?.light_selection_image_height ?? this._config?.image_height;
+            const parsedHeight =
+              rawHeight !== undefined && rawHeight !== "" ? parseFloat(String(rawHeight)) : undefined;
+            const hasHeight = parsedHeight !== undefined && !isNaN(parsedHeight) && parsedHeight > 0;
+            const currentFit =
+              this._config?.light_selection_image_fit || this._config?.image_fit || "fill";
+
+            return html`
+              <div class="form-row-grid" style="margin-top: 6px;">
+                <div class="form-row">
+                  <label>Canvas Height (px, Optional)</label>
+                  <input
+                    type="number"
+                    min="50"
+                    max="1200"
+                    step="10"
+                    .value=${hasHeight ? String(parsedHeight) : ""}
+                    .configValue=${"light_selection_image_height"}
+                    @input=${this._valueChanged}
+                    placeholder="Auto (Image ratio)"
+                  />
+                </div>
+                ${hasHeight
+                  ? html`
+                      <div class="form-row">
+                        <label>Image Fit Mode</label>
+                        <select
+                          .value=${currentFit === "cover" ? "fill" : currentFit}
+                          .configValue=${"light_selection_image_fit"}
+                          @change=${this._valueChanged}
+                        >
+                          <option value="fill">Fill (Crop to fit)</option>
+                          <option value="contain">Contain (Fit inside)</option>
+                          <option value="stretch">Stretch (Exact size)</option>
+                        </select>
+                      </div>
+                    `
+                  : html`<div></div>`}
+              </div>
+            `;
+          })()}
+
+          ${this._renderInteractiveImagePlacer()}
         </div>
 
         <div class="switch-row">
@@ -1661,7 +2049,11 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                                   min="0"
                                   max="100"
                                   step="1"
-                                  .value=${coordX !== undefined ? String(coordX) : ""}
+                                  .value=${this._dragEntityIdx === idx && this._dragEntityCoords
+                                    ? String(this._dragEntityCoords.x)
+                                    : coordX !== undefined
+                                    ? String(coordX)
+                                    : ""}
                                   @change=${(e: Event) => this._updateEntityCoord(idx, "x", e)}
                                   placeholder="auto"
                                   title="X position on image (0 - 100%)"
@@ -1674,7 +2066,11 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
                                   min="0"
                                   max="100"
                                   step="1"
-                                  .value=${coordY !== undefined ? String(coordY) : ""}
+                                  .value=${this._dragEntityIdx === idx && this._dragEntityCoords
+                                    ? String(this._dragEntityCoords.y)
+                                    : coordY !== undefined
+                                    ? String(coordY)
+                                    : ""}
                                   @change=${(e: Event) => this._updateEntityCoord(idx, "y", e)}
                                   placeholder="auto"
                                   title="Y position on image (0 - 100%)"

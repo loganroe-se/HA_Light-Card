@@ -76,7 +76,10 @@ export interface LightCardConfig extends LovelaceCardConfig {
   light_image?: string;
   image?: string;
   floorplan_image?: string;
-  light_selection_image_height?: string;
+  light_selection_image_height?: number | string;
+  image_height?: number | string;
+  light_selection_image_fit?: "contain" | "fill" | "cover" | "stretch";
+  image_fit?: "contain" | "fill" | "cover" | "stretch";
   vibrate?: boolean;
   enable_vibrate?: boolean;
   haptic?: boolean;
@@ -198,4 +201,32 @@ export function resolveDefaultSelectionEntities(
   }
 
   return result;
+}
+
+export function resolveImageCanvasHeight(val?: number | string): string | undefined {
+  if (val === undefined || val === null || val === "") return undefined;
+  if (typeof val === "number") {
+    return val > 0 ? `${val}px` : undefined;
+  }
+  const trimmed = String(val).trim();
+  if (!trimmed) return undefined;
+  const num = Number(trimmed);
+  if (!isNaN(num)) {
+    return num > 0 ? `${num}px` : undefined;
+  }
+  const parsed = parseFloat(trimmed);
+  return !isNaN(parsed) && parsed > 0 ? trimmed : undefined;
+}
+
+export function resolveImageObjectFit(fit?: string): "contain" | "cover" | "fill" {
+  switch (fit) {
+    case "contain":
+      return "contain";
+    case "stretch":
+      return "fill";
+    case "fill":
+    case "cover":
+    default:
+      return "cover";
+  }
 }
