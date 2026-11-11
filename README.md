@@ -172,7 +172,7 @@ presets:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `entity` | `string` | **Required** | Primary light or light group entity ID (e.g. `light.main_bedroom`). |
+| `entity` | `string \| list` | **Required** | Primary entity ID or list of entity IDs (e.g. `light.main_bedroom` or `['light.orb', 'light.lamp']`), searchable in the visual editor across all Home Assistant entities. |
 | `name` | `string` | Entity name | Custom card title displayed in the header. |
 | `icon` | `string` | `mdi:bed` / Entity icon | Custom header icon. |
 
@@ -181,8 +181,8 @@ presets:
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `show_light_selection` | `boolean` | `false` | Enable or disable the interactive light selection shelf above the card (alias `enable_light_selection`). |
-| `entities` | `list` | `undefined` | Array of child entities (`string` or `{entity, name?, icon?, show_label?, x?, y?}`) to select from. When `light_selection_image` is set, `x` and `y` define positions (0-100%). |
-| `light_selection_image` | `string` | `undefined` | Optional image or floorplan URL/path (`/local/...`) to overlay light icons onto (alias `light_image`, `image`, `floorplan_image`). If omitted, uses standard horizontal shelf layout. |
+| `entities` | `list` | Auto-resolved from `entity` | Array of child entities (`string` or `{entity, name?, icon?, show_label?, x?, y?}`) with hand-editable labels and optional X%/Y% image positions (0-100%). Defaults automatically populate from selected entities/groups. |
+| `light_selection_image` | `string` | `undefined` | Uploaded background image (JPEG, PNG, WebP, GIF, SVG) or URL/path (`/local/...`) to overlay light icons onto (alias `light_image`, `image`, `floorplan_image`). If omitted, uses standard horizontal shelf layout. |
 | `light_label_mode` | `string` | `always` | Display mode for light labels: `always` (always show), `hover` (show on hover), `selected` (show only when selected), `never` (never show). |
 | `vibrate` | `boolean` | `false` | Enable or disable haptic vibration feedback on mobile when hold-to-drag selection engages (alias `enable_vibrate`, `haptic`). Default: `false`. |
 

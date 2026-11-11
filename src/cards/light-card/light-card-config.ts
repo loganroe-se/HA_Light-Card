@@ -67,7 +67,7 @@ export interface LightEntityConfig {
 
 export interface LightCardConfig extends LovelaceCardConfig {
   type: string;
-  entity: string;
+  entity: string | string[];
   entities?: (string | LightEntityConfig)[];
   show_light_selection?: boolean;
   enable_light_selection?: boolean;
@@ -164,3 +164,38 @@ export const DEFAULT_PRESETS: PresetConfig[] = [
     rgb: [255, 137, 14]
   }
 ];
+
+export function getMainEntityIds(entity?: string | string[]): string[] {
+  if (!entity) return [];
+  if (Array.isArray(entity)) {
+    return entity.filter((e) => typeof e === "string" && e.trim().length > 0).map((e) => e.trim());
+  }
+  return typeof entity === "string" && entity.trim().length > 0 ? [entity.trim()] : [];
+}
+
+export function resolveDefaultSelectionEntities(
+  entity?: string | string[],
+  hassStates?: Record<string, any>
+): string[] {
+  const mainIds = getMainEntityIds(entity);
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  for (const id of mainIds) {
+    const stateObj = hassStates?.[id];
+    const memberIds = stateObj?.attributes?.entity_id;
+    if (Array.isArray(memberIds) && memberIds.length > 0) {
+      for (const memberId of memberIds) {
+        if (typeof memberId === "string" && !seen.has(memberId)) {
+          seen.add(memberId);
+          result.push(memberId);
+        }
+      }
+    } else if (!seen.has(id)) {
+      seen.add(id);
+      result.push(id);
+    }
+  }
+
+  return result;
+}

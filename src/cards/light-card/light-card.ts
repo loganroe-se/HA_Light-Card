@@ -6,7 +6,9 @@ import {
   LightCardConfig, DEFAULT_PRESETS, PresetConfig,
   BrightnessSubpreset, TemperatureSubpreset, ColorSubpreset,
   DEFAULT_BRIGHTNESS_SUBPRESETS, DEFAULT_TEMPERATURE_SUBPRESETS, DEFAULT_COLOR_SUBPRESETS,
-  CustomToggleConfig
+  CustomToggleConfig,
+  getMainEntityIds,
+  resolveDefaultSelectionEntities
 } from "./light-card-config";
 import { SliderMode, ColorTextFormat, formatSubtitle, throttle } from "../../utils/format";
 import { ICONS, renderIcon, resolvePresetIcon, renderSvgIcon } from "../../utils/icons";
@@ -93,6 +95,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
   private _clickTimer: any = null;
   private _lastClickedEntity: string | null = null;
   private _blurTimer: any = null;
+  private _prevAvailableIdsKey = "";
 
   private _dragStartPos: { x: number; y: number } | null = null;
   private _dragContainerRect: DOMRect | null = null;
@@ -134,7 +137,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
   }
 
   public setConfig(config: LightCardConfig): void {
-    if (!config || !config.entity) {
+    if (!config || config.entity === undefined) {
       throw new Error("Please define an entity (e.g. light.main_bedroom)");
     }
 
@@ -225,7 +228,11 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     if (isSelectionEnabled) {
       const available = this._getAvailableEntities();
       const availableIds = available.map((a) => a.entity);
-      if (this._selectedEntities.length === 0) {
+      const idsKey = availableIds.join(",");
+      if (idsKey !== this._prevAvailableIdsKey) {
+        this._prevAvailableIdsKey = idsKey;
+        this._selectedEntities = [...availableIds];
+      } else if (this._selectedEntities.length === 0) {
         this._selectedEntities = [...availableIds];
       } else {
         const validSelected = this._selectedEntities.filter((id) =>
@@ -292,14 +299,17 @@ export class HaLightCard extends LitElement implements LovelaceCard {
       return this._config.adaptive_lighting_entity;
     }
     if (this.hass && this._config?.entity) {
-      const lightName = this._config.entity.replace(/^light\./, "");
-      const candidates = [
-        `switch.adaptive_lighting_${lightName}`,
-        `switch.adaptive_lighting_adapt_color_${lightName}`,
-        `switch.adaptive_lighting_adapt_brightness_${lightName}`
-      ];
-      for (const cand of candidates) {
-        if (this.hass.states[cand]) return cand;
+      const mainIds = getMainEntityIds(this._config.entity);
+      for (const id of mainIds) {
+        const lightName = id.replace(/^[^.]+\./, "");
+        const candidates = [
+          `switch.adaptive_lighting_${lightName}`,
+          `switch.adaptive_lighting_adapt_color_${lightName}`,
+          `switch.adaptive_lighting_adapt_brightness_${lightName}`
+        ];
+        for (const cand of candidates) {
+          if (this.hass.states[cand]) return cand;
+        }
       }
     }
     return null;
@@ -323,13 +333,13 @@ export class HaLightCard extends LitElement implements LovelaceCard {
   }[] {
     if (!this._config) return [];
     const rawEntities = this._config.entities;
-    if (Array.isArray(rawEntities) && rawEntities.length > 0) {
+    if (Array.isArray(rawEntities)) {
       return rawEntities.map((item) => {
         if (typeof item === "string") {
           const stateObj = this.hass?.states[item];
           const friendlyName =
             stateObj?.attributes?.friendly_name ||
-            item.replace(/^light\./, "").replace(/_/g, " ");
+            item.replace(/^[^.]+\./, "").replace(/_/g, " ");
           const icon = stateObj?.attributes?.icon;
           return {
             entity: item,
@@ -344,7 +354,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
           const friendlyName =
             item.name ||
             stateObj?.attributes?.friendly_name ||
-            item.entity.replace(/^light\./, "").replace(/_/g, " ");
+            item.entity.replace(/^[^.]+\./, "").replace(/_/g, " ");
           const icon = item.icon || stateObj?.attributes?.icon;
 
           const rawX =
@@ -385,22 +395,22 @@ export class HaLightCard extends LitElement implements LovelaceCard {
       });
     }
 
-    const stateObj = this.hass?.states[this._config.entity];
-    const friendlyName =
-      this._config.name ||
-      stateObj?.attributes?.friendly_name ||
-      this._config.entity.replace(/^light\./, "").replace(/_/g, " ");
-    const icon = this._config.icon || stateObj?.attributes?.icon;
-    return [
-      {
-        entity: this._config.entity,
+    const defaultIds = resolveDefaultSelectionEntities(this._config.entity, this.hass?.states);
+    return defaultIds.map((id) => {
+      const stateObj = this.hass?.states[id];
+      const friendlyName =
+        stateObj?.attributes?.friendly_name ||
+        id.replace(/^[^.]+\./, "").replace(/_/g, " ");
+      const icon = stateObj?.attributes?.icon;
+      return {
+        entity: id,
         name: friendlyName,
         icon,
         showLabel: undefined,
         x: undefined,
         y: undefined
-      }
-    ];
+      };
+    });
   }
 
   private _getLightSelectionImage(): string | undefined {
@@ -419,7 +429,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     if (isSelectionEnabled && this._selectedEntities.length > 0) {
       return this._selectedEntities;
     }
-    return this._config?.entity ? [this._config.entity] : [];
+    return getMainEntityIds(this._config?.entity);
   }
 
   private _getTargetEntityId(): string | string[] {
@@ -662,20 +672,24 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     const isSelectionEnabled = Boolean(
       this._config?.show_light_selection || this._config?.enable_light_selection
     );
+    const mainIds = getMainEntityIds(this._config?.entity);
+    const activeIds =
+      isSelectionEnabled && this._selectedEntities.length > 0
+        ? this._selectedEntities
+        : mainIds;
 
-    let primaryEntityId = this._config?.entity || "";
+    let primaryEntityId = mainIds[0] || "";
     if (isSelectionEnabled && this._selectedEntities.length === 1) {
       primaryEntityId = this._selectedEntities[0];
-    } else if (isSelectionEnabled && this._selectedEntities.length > 1) {
-      if (!this.hass?.states[primaryEntityId] && this._selectedEntities[0]) {
-        primaryEntityId = this._selectedEntities[0];
-      }
+    } else if (activeIds.length > 0 && this.hass) {
+      const onEntity = activeIds.find((id) => this.hass?.states[id]?.state === "on");
+      primaryEntityId = onEntity || activeIds[0];
     }
 
     const stateObj = primaryEntityId ? this.hass?.states[primaryEntityId] : undefined;
     let isOn = stateObj?.state === "on";
-    if (isSelectionEnabled && this._selectedEntities.length > 0 && this.hass) {
-      isOn = this._selectedEntities.some(
+    if (activeIds.length > 0 && this.hass) {
+      isOn = activeIds.some(
         (id) => this.hass?.states[id]?.state === "on"
       );
     }
@@ -864,8 +878,11 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     e.stopPropagation();
     if (!this._config) return;
     const targetIds = this._getTargetEntityIds();
-    const entityId = targetIds.length === 1 ? targetIds[0] : this._config.entity;
-    fireEvent(this, "hass-more-info", { entityId });
+    const mainIds = getMainEntityIds(this._config.entity);
+    const entityId = targetIds[0] || mainIds[0];
+    if (entityId) {
+      fireEvent(this, "hass-more-info", { entityId });
+    }
   }
 
   private _setMode(mode: SliderMode): void {
@@ -2181,11 +2198,15 @@ export class HaLightCard extends LitElement implements LovelaceCard {
       rgb: currentRgb
     };
 
+    const mainIds = getMainEntityIds(this._config.entity);
+    const firstMainId = mainIds[0] || "";
     const title =
       this._config.name ||
+      (mainIds.length === 1 ? this.hass?.states[firstMainId]?.attributes?.friendly_name : undefined) ||
       data.attrs.friendly_name ||
-      data.primaryEntityId?.replace(/^light\./, "").replace(/_/g, " ") ||
-      this._config.entity.replace(/^light\./, "").replace(/_/g, " ");
+      data.primaryEntityId?.replace(/^[^.]+\./, "").replace(/_/g, " ") ||
+      firstMainId.replace(/^[^.]+\./, "").replace(/_/g, " ") ||
+      "Light";
 
     const colorFormat = (this._config.color_format || this._config.color_text_format || "rgb") as ColorTextFormat;
 

@@ -207,7 +207,15 @@
           <span>Custom Header Toggle (Both Lamps)</span>
           <input type="checkbox" id="toggle-custom-header-toggle">
         </div>
+        <div class="config-row">
+          <span>Show Visual Card Editor</span>
+          <input type="checkbox" id="toggle-visual-editor">
+        </div>
       </div>
+    </div>
+    <div id="editor-wrapper" class="info-panel" style="display: none; max-height: 750px; overflow-y: auto;">
+      <h3>Visual Card Editor</h3>
+      <div id="editor-mount"></div>
     </div>
   </div>
 
@@ -219,6 +227,7 @@
           state: "on",
           attributes: {
             friendly_name: "Main Bedroom",
+            entity_id: ["light.bedroom_orb", "light.bedroom_lamp_left", "light.bedroom_lamp_right", "light.bedroom_ceiling"],
             brightness: 153,
             color_temp_kelvin: 2700,
             rgb_color: [255, 166, 87],
@@ -296,7 +305,27 @@
         "switch.adaptive_lighting_main_bedroom": {
           entity_id: "switch.adaptive_lighting_main_bedroom",
           state: "on",
-          attributes: {},
+          attributes: {
+            friendly_name: "Adaptive Lighting: Main Bedroom"
+          },
+          last_changed: new Date().toISOString(),
+          last_updated: new Date().toISOString()
+        },
+        "switch.adaptive_lighting_living_room": {
+          entity_id: "switch.adaptive_lighting_living_room",
+          state: "off",
+          attributes: {
+            friendly_name: "Adaptive Lighting: Living Room"
+          },
+          last_changed: new Date().toISOString(),
+          last_updated: new Date().toISOString()
+        },
+        "switch.bedroom_fan": {
+          entity_id: "switch.bedroom_fan",
+          state: "off",
+          attributes: {
+            friendly_name: "Bedroom Fan"
+          },
           last_changed: new Date().toISOString(),
           last_updated: new Date().toISOString()
         }
@@ -392,16 +421,48 @@
         states: JSON.parse(JSON.stringify(mockHass.states))
       };
       document.getElementById("card-wrapper").appendChild(card);
+
+      const editor = document.createElement("ha-light-card-editor");
+      editor.setConfig(currentCardConfig);
+      editor.hass = {
+        ...mockHass,
+        states: JSON.parse(JSON.stringify(mockHass.states))
+      };
+      editor.addEventListener("config-changed", (e) => {
+        if (e.detail?.config) {
+          currentCardConfig = e.detail.config;
+          card.setConfig(currentCardConfig);
+          update();
+        }
+      });
+      document.getElementById("editor-mount")?.appendChild(editor);
+
       update();
+    });
+
+    document.getElementById("toggle-visual-editor")?.addEventListener("change", (e) => {
+      const wrapper = document.getElementById("editor-wrapper");
+      if (wrapper) {
+        wrapper.style.display = e.target.checked ? "flex" : "none";
+      }
     });
 
     function update() {
       const card = document.querySelector("ha-light-card");
+      const editor = document.querySelector("ha-light-card-editor");
+      const clonedStates = JSON.parse(JSON.stringify(mockHass.states));
       if (card) {
         card.hass = {
           ...mockHass,
-          states: JSON.parse(JSON.stringify(mockHass.states))
+          states: clonedStates
         };
+      }
+      if (editor) {
+        editor.hass = {
+          ...mockHass,
+          states: clonedStates
+        };
+        editor.setConfig(currentCardConfig);
       }
 
       const light = mockHass.states["light.main_bedroom"];

@@ -2,7 +2,22 @@ import { LitElement, html, css } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { HomeAssistant, LovelaceCardEditor } from "../../ha/types";
 import { fireEvent } from "../../ha/fire-event";
-import { LightCardConfig, CustomToggleConfig } from "./light-card-config";
+import {
+  LightCardConfig,
+  CustomToggleConfig,
+  LightEntityConfig,
+  getMainEntityIds,
+  resolveDefaultSelectionEntities
+} from "./light-card-config";
+
+const SUPPORTED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/svg+xml"
+]);
 
 @customElement("ha-light-card-editor")
 export class HaLightCardEditor extends LitElement implements LovelaceCardEditor {
@@ -13,7 +28,28 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
   private _config?: LightCardConfig;
 
   @state()
-  private _newEntityInput = "";
+  private _mainEntitySearch = "";
+
+  @state()
+  private _mainEntityDropdownOpen = false;
+
+  @state()
+  private _adaptiveSearch = "";
+
+  @state()
+  private _adaptiveDropdownOpen = false;
+
+  @state()
+  private _addLightSearch = "";
+
+  @state()
+  private _addLightDropdownOpen = false;
+
+  @state()
+  private _uploadError = "";
+
+  @state()
+  private _isDraggingFile = false;
 
   @state()
   private _newToggleEntities = "";
@@ -53,14 +89,95 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     fireEvent(this, "config-changed", { config: this._config });
   }
 
-  private _moveEntity(index: number, direction: -1 | 1): void {
-    if (!this._config || !Array.isArray(this._config.entities)) return;
-    const list = [...this._config.entities];
-    const targetIdx = index + direction;
-    if (targetIdx < 0 || targetIdx >= list.length) return;
-    const temp = list[index];
-    list[index] = list[targetIdx];
-    list[targetIdx] = temp;
+  private _getFilteredHassEntities(query: string, domainFilter?: string) {
+    const states = this.hass?.states || {};
+    const q = query.trim().toLowerCase();
+
+    const entries = Object.values(states).filter((stateObj) => {
+      const id = stateObj.entity_id;
+      if (domainFilter && !id.startsWith(`${domainFilter}.`)) return false;
+      if (!q) return true;
+      const name = String(stateObj.attributes?.friendly_name || "").toLowerCase();
+      return id.toLowerCase().includes(q) || name.includes(q);
+    });
+
+    entries.sort((a, b) => {
+      const aId = a.entity_id;
+      const bId = b.entity_id;
+
+      if (domainFilter === "switch") {
+        const aAdapt = aId.includes("adaptive_lighting") ? 0 : 1;
+        const bAdapt = bId.includes("adaptive_lighting") ? 0 : 1;
+        if (aAdapt !== bAdapt) return aAdapt - bAdapt;
+      } else if (!domainFilter) {
+        const domainRank = (id: string) =>
+          id.startsWith("light.") ? 0 : id.startsWith("group.") ? 1 : 2;
+        const rA = domainRank(aId);
+        const rB = domainRank(bId);
+        if (rA !== rB) return rA - rB;
+      }
+
+      const aName = String(a.attributes?.friendly_name || aId).toLowerCase();
+      const bName = String(b.attributes?.friendly_name || bId).toLowerCase();
+      return aName.localeCompare(bName);
+    });
+
+    return entries;
+  }
+
+  private _setMainEntities(ids: string[]): void {
+    if (!this._config) return;
+    const unique = Array.from(new Set(ids.filter((s) => s.trim().length > 0)));
+    const nextEntity: string | string[] =
+      unique.length === 1 ? unique[0] : unique;
+
+    this._config = {
+      ...this._config,
+      entity: nextEntity
+    };
+    fireEvent(this, "config-changed", { config: this._config });
+    this.requestUpdate();
+  }
+
+  private _toggleMainEntity(entityId: string): void {
+    const current = getMainEntityIds(this._config?.entity);
+    if (current.includes(entityId)) {
+      this._setMainEntities(current.filter((id) => id !== entityId));
+    } else {
+      this._setMainEntities([...current, entityId]);
+    }
+  }
+
+  private _removeMainEntity(entityId: string): void {
+    const current = getMainEntityIds(this._config?.entity);
+    this._setMainEntities(current.filter((id) => id !== entityId));
+  }
+
+  private _selectAdaptiveEntity(entityId?: string): void {
+    if (!this._config) return;
+    const newConfig = { ...this._config };
+    if (entityId) {
+      newConfig.adaptive_lighting_entity = entityId;
+    } else {
+      delete newConfig.adaptive_lighting_entity;
+    }
+    this._config = newConfig;
+    this._adaptiveSearch = "";
+    this._adaptiveDropdownOpen = false;
+    fireEvent(this, "config-changed", { config: this._config });
+    this.requestUpdate();
+  }
+
+  private _getEffectiveSelectionEntities(): (string | LightEntityConfig)[] {
+    if (!this._config) return [];
+    if (Array.isArray(this._config.entities)) {
+      return this._config.entities;
+    }
+    return resolveDefaultSelectionEntities(this._config.entity, this.hass?.states);
+  }
+
+  private _commitSelectionEntities(list: (string | LightEntityConfig)[]): void {
+    if (!this._config) return;
     this._config = {
       ...this._config,
       entities: list
@@ -69,13 +186,62 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     this.requestUpdate();
   }
 
+  private _resetSelectionEntitiesToDefault(): void {
+    if (!this._config) return;
+    const newConfig = { ...this._config };
+    delete newConfig.entities;
+    this._config = newConfig;
+    fireEvent(this, "config-changed", { config: this._config });
+    this.requestUpdate();
+  }
+
+  private _moveEntity(index: number, direction: -1 | 1): void {
+    const list = [...this._getEffectiveSelectionEntities()];
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= list.length) return;
+    const temp = list[index];
+    list[index] = list[targetIdx];
+    list[targetIdx] = temp;
+    this._commitSelectionEntities(list);
+  }
+
+  private _updateEntityField(index: number, field: "name" | "icon", rawValue: string): void {
+    const list = [...this._getEffectiveSelectionEntities()];
+    const current = list[index];
+    if (current === undefined) return;
+
+    const val = rawValue;
+    const trimmed = rawValue.trim();
+
+    if (typeof current === "string") {
+      if (trimmed === "") return;
+      list[index] = {
+        entity: current,
+        [field]: val
+      };
+    } else {
+      const updated: LightEntityConfig = {
+        ...current,
+        [field]: val
+      };
+      if (trimmed === "") {
+        delete (updated as any)[field];
+      }
+      list[index] = updated;
+    }
+    this._commitSelectionEntities(list);
+  }
+
   private _updateEntityCoord(index: number, axis: "x" | "y", e: Event): void {
-    if (!this._config || !Array.isArray(this._config.entities)) return;
+    const list = [...this._getEffectiveSelectionEntities()];
+    const current = list[index];
+    if (current === undefined) return;
+
     const val = (e.target as HTMLInputElement).value.trim();
     const numVal = val === "" ? undefined : Math.max(0, Math.min(100, Number(val)));
-    const list = [...this._config.entities];
-    const current = list[index];
+
     if (typeof current === "string") {
+      if (numVal === undefined) return;
       list[index] = {
         entity: current,
         [axis]: numVal
@@ -90,36 +256,74 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
       }
       list[index] = updated;
     }
-    this._config = {
-      ...this._config,
-      entities: list
-    };
-    fireEvent(this, "config-changed", { config: this._config });
-    this.requestUpdate();
+    this._commitSelectionEntities(list);
   }
 
   private _removeEntity(index: number): void {
-    if (!this._config || !Array.isArray(this._config.entities)) return;
-    const list = this._config.entities.filter((_, i) => i !== index);
-    this._config = {
-      ...this._config,
-      entities: list.length > 0 ? list : undefined
-    };
-    fireEvent(this, "config-changed", { config: this._config });
-    this.requestUpdate();
+    const list = this._getEffectiveSelectionEntities().filter((_, i) => i !== index);
+    this._commitSelectionEntities(list);
   }
 
-  private _addEntity(): void {
-    if (!this._config) return;
-    const trimmed = this._newEntityInput.trim();
+  private _addEntity(entityId?: string): void {
+    const trimmed = (entityId ?? this._addLightSearch).trim();
     if (!trimmed) return;
-    const current = Array.isArray(this._config.entities) ? [...this._config.entities] : [];
-    current.push(trimmed);
-    this._config = {
-      ...this._config,
-      entities: current
+    const list = [...this._getEffectiveSelectionEntities()];
+    list.push(trimmed);
+    this._addLightSearch = "";
+    this._addLightDropdownOpen = false;
+    this._commitSelectionEntities(list);
+  }
+
+  private _handleImageFile(file?: File): void {
+    if (!file || !this._config) return;
+    const isSupportedMime = SUPPORTED_IMAGE_TYPES.has(file.type.toLowerCase());
+    const hasSupportedExt = /\.(jpe?g|png|webp|gif|svg)$/i.test(file.name);
+
+    if (!isSupportedMime && !hasSupportedExt) {
+      this._uploadError = `Unsupported file "${file.name}". Supported formats: JPEG, PNG, WebP, GIF, SVG.`;
+      return;
+    }
+
+    this._uploadError = "";
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (!this._config || typeof reader.result !== "string") return;
+      this._config = {
+        ...this._config,
+        light_selection_image: reader.result
+      };
+      fireEvent(this, "config-changed", { config: this._config });
+      this.requestUpdate();
     };
-    this._newEntityInput = "";
+    reader.onerror = () => {
+      this._uploadError = "Failed to read the selected image file.";
+    };
+    reader.readAsDataURL(file);
+  }
+
+  private _onImageFileInput(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    this._handleImageFile(file);
+    input.value = "";
+  }
+
+  private _onImageDrop(e: DragEvent): void {
+    e.preventDefault();
+    this._isDraggingFile = false;
+    const file = e.dataTransfer?.files?.[0];
+    this._handleImageFile(file);
+  }
+
+  private _clearImage(): void {
+    if (!this._config) return;
+    const newConfig = { ...this._config };
+    delete newConfig.light_selection_image;
+    delete newConfig.light_image;
+    delete newConfig.image;
+    delete newConfig.floorplan_image;
+    this._config = newConfig;
+    this._uploadError = "";
     fireEvent(this, "config-changed", { config: this._config });
     this.requestUpdate();
   }
@@ -166,25 +370,6 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     };
     fireEvent(this, "config-changed", { config: this._config });
     this.requestUpdate();
-  }
-
-  private _onEntitiesListInput(ev: Event): void {
-    if (!this._config) return;
-    const val = (ev.target as HTMLInputElement).value;
-    const entities = val
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
-    const newConfig = {
-      ...this._config,
-      entities: entities.length > 0 ? entities : undefined
-    };
-    if (entities.length === 0) {
-      delete newConfig.entities;
-    }
-    this._config = newConfig;
-    fireEvent(this, "config-changed", { config: this._config });
   }
 
   static override styles = css`
@@ -406,24 +591,535 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
     .add-btn:hover {
       background: #d97706;
     }
+
+    .selected-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .entity-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      background: rgba(245, 158, 11, 0.16);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fde68a;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      max-width: 100%;
+    }
+
+    .entity-chip-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chip-remove {
+      background: none;
+      border: none;
+      color: #fde68a;
+      cursor: pointer;
+      padding: 0 2px;
+      font-size: 12px;
+      line-height: 1;
+      opacity: 0.8;
+    }
+
+    .chip-remove:hover {
+      opacity: 1;
+      color: #ffffff;
+    }
+
+    .dropdown-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .search-input-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input-row input {
+      width: 100%;
+      box-sizing: border-box;
+      padding-right: 32px;
+    }
+
+    .clear-input-btn {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      color: #9ca3af;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 4px;
+      line-height: 1;
+    }
+
+    .clear-input-btn:hover {
+      color: #ffffff;
+    }
+
+    .entity-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      max-height: 240px;
+      overflow-y: auto;
+      background: #27272a;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+      z-index: 50;
+      padding: 4px;
+    }
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      gap: 8px;
+      transition: background 0.12s ease;
+    }
+
+    .dropdown-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .dropdown-item.is-selected {
+      background: rgba(245, 158, 11, 0.14);
+    }
+
+    .dropdown-item-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .dropdown-item-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dropdown-item-id {
+      font-size: 11px;
+      color: #9ca3af;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dropdown-item-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .domain-badge {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #d4d4d8;
+    }
+
+    .domain-badge.is-group {
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+    }
+
+    .dropdown-empty {
+      padding: 10px 12px;
+      font-size: 12px;
+      color: #9ca3af;
+      font-style: italic;
+      text-align: center;
+    }
+
+    .light-edit-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .entity-row-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .entity-label-input {
+      flex: 1;
+      min-width: 100px;
+      padding: 6px 8px !important;
+      font-size: 13px !important;
+      font-weight: 600;
+      border-radius: 6px !important;
+      background: rgba(0, 0, 0, 0.25) !important;
+    }
+
+    .entity-icon-input {
+      width: 120px;
+      padding: 6px 8px !important;
+      font-size: 12px !important;
+      border-radius: 6px !important;
+      background: rgba(0, 0, 0, 0.25) !important;
+    }
+
+    .entity-row-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .reset-defaults-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #e4e4e7;
+      cursor: pointer;
+    }
+
+    .reset-defaults-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .image-upload-zone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 12px;
+      border: 1.5px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .image-upload-zone.dragging {
+      border-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.1);
+    }
+
+    .upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: #f59e0b;
+      color: #18181b;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .upload-btn:hover {
+      background: #d97706;
+    }
+
+    .image-preview-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.25);
+      box-sizing: border-box;
+    }
+
+    .image-preview-thumb {
+      max-height: 80px;
+      max-width: 140px;
+      border-radius: 6px;
+      object-fit: contain;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .upload-error {
+      font-size: 12px;
+      color: #f87171;
+      margin-top: 2px;
+    }
   `;
+
+  private _renderMainEntityPicker() {
+    if (!this._config) return html``;
+    const selectedIds = getMainEntityIds(this._config.entity);
+    const matches = this._getFilteredHassEntities(this._mainEntitySearch).slice(0, 80);
+
+    return html`
+      <div class="form-row">
+        <label>Entity (Required — Select one or multiple)</label>
+
+        ${selectedIds.length > 0
+          ? html`
+              <div class="selected-chips">
+                ${selectedIds.map((id) => {
+                  const stateObj = this.hass?.states[id];
+                  const friendlyName = stateObj?.attributes?.friendly_name;
+                  const label = friendlyName ? `${friendlyName} (${id})` : id;
+                  return html`
+                    <span class="entity-chip" title="${id}">
+                      <span class="entity-chip-text">${label}</span>
+                      <button
+                        type="button"
+                        class="chip-remove"
+                        @click=${() => this._removeMainEntity(id)}
+                        title="Remove ${id}"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  `;
+                })}
+              </div>
+            `
+          : null}
+
+        <div class="dropdown-wrap">
+          <div class="search-input-row">
+            <input
+              type="text"
+              .value=${this._mainEntitySearch}
+              @focus=${() => (this._mainEntityDropdownOpen = true)}
+              @input=${(e: Event) => {
+                this._mainEntitySearch = (e.target as HTMLInputElement).value;
+                this._mainEntityDropdownOpen = true;
+              }}
+              @blur=${() => {
+                setTimeout(() => {
+                  this._mainEntityDropdownOpen = false;
+                }, 160);
+              }}
+              @keydown=${(e: KeyboardEvent) => {
+                if (e.key === "Escape") {
+                  this._mainEntityDropdownOpen = false;
+                } else if (e.key === "Enter") {
+                  e.preventDefault();
+                  const q = this._mainEntitySearch.trim();
+                  if (q) {
+                    this._toggleMainEntity(q);
+                    this._mainEntitySearch = "";
+                  }
+                }
+              }}
+              placeholder="Search all Home Assistant entities (name or ID)..."
+            />
+            ${this._mainEntitySearch
+              ? html`
+                  <button
+                    type="button"
+                    class="clear-input-btn"
+                    @mousedown=${(e: MouseEvent) => {
+                      e.preventDefault();
+                      this._mainEntitySearch = "";
+                    }}
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                `
+              : null}
+          </div>
+
+          ${this._mainEntityDropdownOpen
+            ? html`
+                <div class="entity-dropdown">
+                  ${matches.length > 0
+                    ? matches.map((stateObj) => {
+                        const id = stateObj.entity_id;
+                        const name = stateObj.attributes?.friendly_name || id;
+                        const domain = id.split(".")[0];
+                        const isGroup = Array.isArray(stateObj.attributes?.entity_id);
+                        const isSelected = selectedIds.includes(id);
+
+                        return html`
+                          <div
+                            class="dropdown-item ${isSelected ? "is-selected" : ""}"
+                            @mousedown=${(e: MouseEvent) => {
+                              e.preventDefault();
+                              this._toggleMainEntity(id);
+                            }}
+                          >
+                            <div class="dropdown-item-text">
+                              <span class="dropdown-item-name">${name}</span>
+                              <span class="dropdown-item-id">${id}</span>
+                            </div>
+                            <div class="dropdown-item-meta">
+                              ${isGroup
+                                ? html`<span class="domain-badge is-group">Group</span>`
+                                : html`<span class="domain-badge">${domain}</span>`}
+                              ${isSelected
+                                ? html`<span style="color: #f59e0b; font-weight: 700;">✓</span>`
+                                : null}
+                            </div>
+                          </div>
+                        `;
+                      })
+                    : html`
+                        <div class="dropdown-empty">
+                          No matching entities found. Press Enter to add "${this._mainEntitySearch}".
+                        </div>
+                      `}
+                </div>
+              `
+            : null}
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderAdaptiveEntityPicker() {
+    if (!this._config) return html``;
+    const current = this._config.adaptive_lighting_entity || "";
+    const currentName = current ? this.hass?.states[current]?.attributes?.friendly_name : undefined;
+    const switches = this._getFilteredHassEntities(this._adaptiveSearch, "switch");
+
+    return html`
+      <div class="form-row">
+        <label>Adaptive Lighting Entity (switch.* — Auto-detects if blank)</label>
+        <div class="dropdown-wrap">
+          <div class="search-input-row">
+            <input
+              type="text"
+              .value=${this._adaptiveDropdownOpen
+                ? this._adaptiveSearch
+                : currentName
+                ? `${currentName} (${current})`
+                : current}
+              @focus=${() => {
+                this._adaptiveSearch = "";
+                this._adaptiveDropdownOpen = true;
+              }}
+              @input=${(e: Event) => {
+                this._adaptiveSearch = (e.target as HTMLInputElement).value;
+                this._adaptiveDropdownOpen = true;
+              }}
+              @blur=${() => {
+                setTimeout(() => {
+                  this._adaptiveDropdownOpen = false;
+                }, 160);
+              }}
+              @keydown=${(e: KeyboardEvent) => {
+                if (e.key === "Escape") {
+                  this._adaptiveDropdownOpen = false;
+                }
+              }}
+              placeholder="Auto-detect (Default) — Click or type to search switch.* entities"
+            />
+            ${current
+              ? html`
+                  <button
+                    type="button"
+                    class="clear-input-btn"
+                    @mousedown=${(e: MouseEvent) => {
+                      e.preventDefault();
+                      this._selectAdaptiveEntity(undefined);
+                    }}
+                    title="Reset to Auto-detect"
+                  >
+                    ✕
+                  </button>
+                `
+              : null}
+          </div>
+
+          ${this._adaptiveDropdownOpen
+            ? html`
+                <div class="entity-dropdown">
+                  <div
+                    class="dropdown-item ${!current ? "is-selected" : ""}"
+                    @mousedown=${(e: MouseEvent) => {
+                      e.preventDefault();
+                      this._selectAdaptiveEntity(undefined);
+                    }}
+                  >
+                    <div class="dropdown-item-text">
+                      <span class="dropdown-item-name">Auto-detect (Default)</span>
+                      <span class="dropdown-item-id">Automatically matches switch.adaptive_lighting_*</span>
+                    </div>
+                    ${!current
+                      ? html`<span style="color: #f59e0b; font-weight: 700;">✓</span>`
+                      : null}
+                  </div>
+                  ${switches.length > 0
+                    ? switches.map((stateObj) => {
+                        const id = stateObj.entity_id;
+                        const name = stateObj.attributes?.friendly_name || id;
+                        const isSelected = current === id;
+
+                        return html`
+                          <div
+                            class="dropdown-item ${isSelected ? "is-selected" : ""}"
+                            @mousedown=${(e: MouseEvent) => {
+                              e.preventDefault();
+                              this._selectAdaptiveEntity(id);
+                            }}
+                          >
+                            <div class="dropdown-item-text">
+                              <span class="dropdown-item-name">${name}</span>
+                              <span class="dropdown-item-id">${id}</span>
+                            </div>
+                            <div class="dropdown-item-meta">
+                              <span class="domain-badge">switch</span>
+                              ${isSelected
+                                ? html`<span style="color: #f59e0b; font-weight: 700;">✓</span>`
+                                : null}
+                            </div>
+                          </div>
+                        `;
+                      })
+                    : html`
+                        <div class="dropdown-empty">No matching switch.* entities found.</div>
+                      `}
+                </div>
+              `
+            : null}
+        </div>
+      </div>
+    `;
+  }
 
   protected override render() {
     if (!this.hass || !this._config) return html``;
 
     return html`
       <div class="card-config">
-        <!-- Entity Picker / Input -->
-        <div class="form-row">
-          <label>Entity (Required)</label>
-          <input
-            type="text"
-            .value=${this._config.entity || ""}
-            .configValue=${"entity"}
-            @input=${this._valueChanged}
-            placeholder="light.main_bedroom"
-          />
-        </div>
+        <!-- Main Entity Picker (Multi-select Searchable Dropdown) -->
+        ${this._renderMainEntityPicker()}
 
         <!-- Custom Title -->
         <div class="form-row">
@@ -568,17 +1264,8 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
           />
         </div>
 
-        <!-- Adaptive Lighting Entity -->
-        <div class="form-row">
-          <label>Adaptive Lighting Entity (Optional - auto-detects if blank)</label>
-          <input
-            type="text"
-            .value=${this._config.adaptive_lighting_entity || ""}
-            .configValue=${"adaptive_lighting_entity"}
-            @input=${this._valueChanged}
-            placeholder="switch.adaptive_lighting_main_bedroom"
-          />
-        </div>
+        <!-- Adaptive Lighting Entity (switch.* picker) -->
+        ${this._renderAdaptiveEntityPicker()}
 
         <!-- Mode Enables: Brightness / Temp / Color -->
         <div class="switch-row">
@@ -777,16 +1464,75 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
         </div>
 
         <div class="form-row">
-          <label>Light Selection Image (Optional Floorplan / Room Overlay)</label>
+          <label>Background Image (Optional Floorplan / Room Overlay)</label>
+          <div
+            class="image-upload-zone ${this._isDraggingFile ? "dragging" : ""}"
+            @dragover=${(e: DragEvent) => {
+              e.preventDefault();
+              this._isDraggingFile = true;
+            }}
+            @dragleave=${() => (this._isDraggingFile = false)}
+            @drop=${this._onImageDrop}
+          >
+            ${this._config.light_selection_image || this._config.light_image || this._config.image
+              ? html`
+                  <div class="image-preview-wrap">
+                    <img
+                      class="image-preview-thumb"
+                      src=${this._config.light_selection_image || this._config.light_image || this._config.image}
+                      alt="Uploaded background preview"
+                    />
+                    <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+                      <label class="upload-btn">
+                        Replace Image
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,.jpg,.jpeg,.png,.webp,.gif,.svg"
+                          @change=${this._onImageFileInput}
+                          hidden
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        class="reset-defaults-btn"
+                        @click=${this._clearImage}
+                      >
+                        ✕ Remove Image
+                      </button>
+                    </div>
+                  </div>
+                `
+              : html`
+                  <label class="upload-btn">
+                    Upload Image File
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,.jpg,.jpeg,.png,.webp,.gif,.svg"
+                      @change=${this._onImageFileInput}
+                      hidden
+                    />
+                  </label>
+                  <div style="font-size: 11px; color: var(--secondary-text-color, #9ca3af);">
+                    Drag & drop or choose an image. Supported formats: JPEG (.jpg, .jpeg), PNG (.png), WebP (.webp), GIF (.gif), SVG (.svg).
+                  </div>
+                `}
+            ${this._uploadError
+              ? html`<div class="upload-error">${this._uploadError}</div>`
+              : null}
+          </div>
           <input
             type="text"
-            .value=${this._config.light_selection_image || this._config.light_image || this._config.image || ""}
+            .value=${(() => {
+              const img = this._config?.light_selection_image || this._config?.light_image || this._config?.image || "";
+              return img.startsWith("data:") ? "" : img;
+            })()}
             .configValue=${"light_selection_image"}
             @change=${this._valueChanged}
-            placeholder="/local/floorplan.png or https://..."
+            placeholder="Or enter image URL / local path (e.g. /local/floorplan.png)"
+            style="margin-top: 2px; font-size: 12px; padding: 8px 10px;"
           />
           <div style="font-size: 11px; color: var(--secondary-text-color, #9ca3af);">
-            When an image is provided, lights are placed directly on the image at their X/Y positions (0 - 100%).
+            When an image is set, lights overlay onto it at their X% / Y% coordinates (0 - 100%).
           </div>
         </div>
 
@@ -806,111 +1552,212 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
         </div>
 
         <div class="form-row">
-          <label>Configured Lights (Re-order & Manage)</label>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <label>Selection Lights (Labels, Order & Coordinates)</label>
+            ${Array.isArray(this._config.entities)
+              ? html`
+                  <button
+                    type="button"
+                    class="reset-defaults-btn"
+                    @click=${this._resetSelectionEntitiesToDefault}
+                    title="Restore default lights derived from the main entity/entities"
+                  >
+                    ↺ Reset to Defaults
+                  </button>
+                `
+              : html`
+                  <span style="font-size: 11px; color: #f59e0b;">Using defaults from main entity</span>
+                `}
+          </div>
           <div style="font-size: 11px; color: var(--secondary-text-color, #9ca3af); margin-bottom: 4px;">
-            Use the ▲ and ▼ buttons to re-order lights. Set X% and Y% coordinates (0 - 100%) to position them on the image.
+            Edit labels directly, set optional icons & X%/Y% image positions, or remove/reorder lights.
           </div>
 
           <div class="entity-list">
-            ${Array.isArray(this._config.entities) && this._config.entities.length > 0
-              ? this._config.entities.map((item, idx) => {
-                  const entityId = typeof item === "string" ? item : item.entity;
-                  const customName = typeof item === "object" ? item.name : undefined;
-                  const coordX = typeof item === "object" ? (item.x ?? (item as any).x_position ?? (item as any).left) : undefined;
-                  const coordY = typeof item === "object" ? (item.y ?? (item as any).y_position ?? (item as any).top) : undefined;
-                  const stateObj = this.hass?.states[entityId];
-                  const displayName = customName || stateObj?.attributes?.friendly_name || entityId;
-                  const isFirst = idx === 0;
-                  const isLast = idx === (this._config!.entities!.length - 1);
+            ${(() => {
+              const effectiveList = this._getEffectiveSelectionEntities();
+              const addMatches = this._getFilteredHassEntities(this._addLightSearch).slice(0, 60);
 
-                  return html`
-                    <div class="entity-item-row">
-                      <div class="entity-item-info">
-                        <span class="entity-item-name">${displayName}</span>
-                        <span class="entity-item-id">${entityId}</span>
-                      </div>
-                      <div class="entity-coord-inputs">
-                        <div class="coord-field">
-                          <span>X%</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="1"
-                            .value=${coordX !== undefined ? String(coordX) : ""}
-                            @change=${(e: Event) => this._updateEntityCoord(idx, "x", e)}
-                            placeholder="auto"
-                            title="X position on image (0 - 100%)"
-                          />
+              return html`
+                ${effectiveList.length > 0
+                  ? effectiveList.map((item, idx) => {
+                      const entityId = typeof item === "string" ? item : item.entity;
+                      const customName = typeof item === "object" ? item.name : undefined;
+                      const customIcon = typeof item === "object" ? item.icon : undefined;
+                      const coordX =
+                        typeof item === "object"
+                          ? (item.x ?? (item as any).x_position ?? (item as any).left)
+                          : undefined;
+                      const coordY =
+                        typeof item === "object"
+                          ? (item.y ?? (item as any).y_position ?? (item as any).top)
+                          : undefined;
+                      const stateObj = this.hass?.states[entityId];
+                      const fallbackName =
+                        stateObj?.attributes?.friendly_name ||
+                        entityId.replace(/^[^.]+\./, "").replace(/_/g, " ");
+                      const fallbackIcon = stateObj?.attributes?.icon || "mdi:lightbulb";
+                      const isFirst = idx === 0;
+                      const isLast = idx === effectiveList.length - 1;
+
+                      return html`
+                        <div class="entity-item-row light-edit-row">
+                          <div class="entity-row-top">
+                            <input
+                              type="text"
+                              class="entity-label-input"
+                              .value=${customName ?? ""}
+                              @input=${(e: Event) =>
+                                this._updateEntityField(idx, "name", (e.target as HTMLInputElement).value)}
+                              placeholder=${fallbackName}
+                              title="Hand-editable display label (leave blank for default)"
+                            />
+                            <input
+                              type="text"
+                              class="entity-icon-input"
+                              .value=${customIcon ?? ""}
+                              @input=${(e: Event) =>
+                                this._updateEntityField(idx, "icon", (e.target as HTMLInputElement).value)}
+                              placeholder=${fallbackIcon}
+                              title="Optional MDI icon (e.g. mdi:lamp)"
+                            />
+                            <div class="entity-item-actions">
+                              <button
+                                type="button"
+                                class="icon-btn"
+                                ?disabled=${isFirst}
+                                @click=${() => this._moveEntity(idx, -1)}
+                                title="Move light earlier (Up)"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                class="icon-btn"
+                                ?disabled=${isLast}
+                                @click=${() => this._moveEntity(idx, 1)}
+                                title="Move light later (Down)"
+                              >
+                                ▼
+                              </button>
+                              <button
+                                type="button"
+                                class="icon-btn delete-btn"
+                                @click=${() => this._removeEntity(idx)}
+                                title="Remove light"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+
+                          <div class="entity-row-bottom">
+                            <span class="entity-item-id">${entityId}</span>
+                            <div class="entity-coord-inputs">
+                              <div class="coord-field">
+                                <span>X%</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  .value=${coordX !== undefined ? String(coordX) : ""}
+                                  @change=${(e: Event) => this._updateEntityCoord(idx, "x", e)}
+                                  placeholder="auto"
+                                  title="X position on image (0 - 100%)"
+                                />
+                              </div>
+                              <div class="coord-field">
+                                <span>Y%</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  .value=${coordY !== undefined ? String(coordY) : ""}
+                                  @change=${(e: Event) => this._updateEntityCoord(idx, "y", e)}
+                                  placeholder="auto"
+                                  title="Y position on image (0 - 100%)"
+                                />
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div class="coord-field">
-                          <span>Y%</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="1"
-                            .value=${coordY !== undefined ? String(coordY) : ""}
-                            @change=${(e: Event) => this._updateEntityCoord(idx, "y", e)}
-                            placeholder="auto"
-                            title="Y position on image (0 - 100%)"
-                          />
-                        </div>
+                      `;
+                    })
+                  : html`
+                      <div style="font-size: 12px; color: var(--secondary-text-color, #9ca3af); font-style: italic; padding: 4px 0;">
+                        No lights in selection list. Add one below or click Reset to Defaults.
                       </div>
-                      <div class="entity-item-actions">
-                        <button
-                          type="button"
-                          class="icon-btn"
-                          ?disabled=${isFirst}
-                          @click=${() => this._moveEntity(idx, -1)}
-                          title="Move light earlier (Up)"
-                        >
-                          ▲
-                        </button>
-                        <button
-                          type="button"
-                          class="icon-btn"
-                          ?disabled=${isLast}
-                          @click=${() => this._moveEntity(idx, 1)}
-                          title="Move light later (Down)"
-                        >
-                          ▼
-                        </button>
-                        <button
-                          type="button"
-                          class="icon-btn delete-btn"
-                          @click=${() => this._removeEntity(idx)}
-                          title="Remove light"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  `;
-                })
-              : html`
-                  <div style="font-size: 12px; color: var(--secondary-text-color, #9ca3af); font-style: italic; padding: 4px 0;">
-                    No child lights added yet. The main entity will be used unless you add lights below.
+                    `}
+
+                <div class="dropdown-wrap" style="margin-top: 4px;">
+                  <div class="add-entity-row">
+                    <input
+                      type="text"
+                      .value=${this._addLightSearch}
+                      @focus=${() => (this._addLightDropdownOpen = true)}
+                      @input=${(e: Event) => {
+                        this._addLightSearch = (e.target as HTMLInputElement).value;
+                        this._addLightDropdownOpen = true;
+                      }}
+                      @blur=${() => {
+                        setTimeout(() => {
+                          this._addLightDropdownOpen = false;
+                        }, 160);
+                      }}
+                      @keydown=${(e: KeyboardEvent) => {
+                        if (e.key === "Escape") {
+                          this._addLightDropdownOpen = false;
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          this._addEntity();
+                        }
+                      }}
+                      placeholder="Search Home Assistant entities to add..."
+                    />
+                    <button type="button" class="add-btn" @click=${() => this._addEntity()}>
+                      + Add Light
+                    </button>
                   </div>
-                `}
 
-            <div class="add-entity-row">
-              <input
-                type="text"
-                .value=${this._newEntityInput}
-                @input=${(e: Event) => (this._newEntityInput = (e.target as HTMLInputElement).value)}
-                @keydown=${(e: KeyboardEvent) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    this._addEntity();
-                  }
-                }}
-                placeholder="light.bedroom_lamp_left"
-              />
-              <button type="button" class="add-btn" @click=${this._addEntity}>
-                + Add Light
-              </button>
-            </div>
+                  ${this._addLightDropdownOpen
+                    ? html`
+                        <div class="entity-dropdown">
+                          ${addMatches.length > 0
+                            ? addMatches.map((stateObj) => {
+                                const id = stateObj.entity_id;
+                                const name = stateObj.attributes?.friendly_name || id;
+                                const domain = id.split(".")[0];
+                                return html`
+                                  <div
+                                    class="dropdown-item"
+                                    @mousedown=${(e: MouseEvent) => {
+                                      e.preventDefault();
+                                      this._addEntity(id);
+                                    }}
+                                  >
+                                    <div class="dropdown-item-text">
+                                      <span class="dropdown-item-name">${name}</span>
+                                      <span class="dropdown-item-id">${id}</span>
+                                    </div>
+                                    <div class="dropdown-item-meta">
+                                      <span class="domain-badge">${domain}</span>
+                                    </div>
+                                  </div>
+                                `;
+                              })
+                            : html`
+                                <div class="dropdown-empty">
+                                  No matching entities. Click "+ Add Light" or press Enter to add manually.
+                                </div>
+                              `}
+                        </div>
+                      `
+                    : null}
+                </div>
+              `;
+            })()}
           </div>
         </div>
 
