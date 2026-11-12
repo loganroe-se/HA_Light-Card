@@ -15,7 +15,8 @@ import {
   DEFAULT_TEMPERATURE_SUBPRESETS,
   DEFAULT_COLOR_SUBPRESETS,
   getMainEntityIds,
-  resolveDefaultSelectionEntities
+  resolveDefaultSelectionEntities,
+  resolveDefaultKelvinBounds
 } from "./light-card-config";
 import { rgbToHex, parseColorInput, resolvePresetRgb } from "../../utils/colors";
 
@@ -2500,6 +2501,8 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
   protected override render() {
     if (!this.hass || !this._config) return html``;
 
+    const defaultKelvinBounds = resolveDefaultKelvinBounds(this._config, this.hass?.states);
+
     return html`
       <div class="card-config">
         <!-- Main Entity Picker (Multi-select Searchable Dropdown) -->
@@ -2643,10 +2646,12 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
               min="1000"
               max="20000"
               step="100"
-              .value=${this._config.min_kelvin !== undefined ? String(this._config.min_kelvin) : "2000"}
+              .value=${this._config.min_kelvin !== undefined
+                ? String(this._config.min_kelvin)
+                : String(defaultKelvinBounds.minKelvin)}
               .configValue=${"min_kelvin"}
               @input=${this._valueChanged}
-              placeholder="2000"
+              placeholder=${String(defaultKelvinBounds.minKelvin)}
             />
           </div>
           <div class="form-row">
@@ -2656,10 +2661,12 @@ export class HaLightCardEditor extends LitElement implements LovelaceCardEditor 
               min="1000"
               max="20000"
               step="100"
-              .value=${this._config.max_kelvin !== undefined ? String(this._config.max_kelvin) : "6500"}
+              .value=${this._config.max_kelvin !== undefined
+                ? String(this._config.max_kelvin)
+                : String(defaultKelvinBounds.maxKelvin)}
               .configValue=${"max_kelvin"}
               @input=${this._valueChanged}
-              placeholder="6500"
+              placeholder=${String(defaultKelvinBounds.maxKelvin)}
             />
           </div>
         </div>

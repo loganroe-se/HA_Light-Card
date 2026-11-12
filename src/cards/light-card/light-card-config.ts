@@ -230,3 +230,57 @@ export function resolveImageObjectFit(fit?: string): "contain" | "cover" | "fill
       return "cover";
   }
 }
+
+export function resolveEntityKelvinBounds(
+  attrs?: Record<string, any>,
+  fallbackMin = 2000,
+  fallbackMax = 6500
+): { minKelvin: number; maxKelvin: number } {
+  const minKelvin =
+    attrs?.min_color_temp_kelvin ||
+    (attrs?.max_mireds ? Math.round(1000000 / attrs.max_mireds) : fallbackMin);
+  const maxKelvin =
+    attrs?.max_color_temp_kelvin ||
+    (attrs?.min_mireds ? Math.round(1000000 / attrs.min_mireds) : fallbackMax);
+
+  return { minKelvin, maxKelvin };
+}
+
+export function resolveDefaultKelvinBounds(
+  config?: LightCardConfig,
+  hassStates?: Record<string, any>
+): { minKelvin: number; maxKelvin: number } {
+  if (!hassStates || !config) {
+    return { minKelvin: 2000, maxKelvin: 6500 };
+  }
+
+  const mainIds = getMainEntityIds(config.entity);
+  const customSelectionIds = Array.isArray(config.entities)
+    ? config.entities
+        .map((item) => (typeof item === "string" ? item : item?.entity))
+        .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+    : [];
+  const expandedIds = resolveDefaultSelectionEntities(config.entity, hassStates);
+  const candidateIds = Array.from(new Set([...mainIds, ...customSelectionIds, ...expandedIds]));
+
+  const primaryOnId = candidateIds.find((id) => {
+    const st = hassStates[id];
+    const attrs = st?.attributes;
+    return st?.state === "on" && attrs && (
+      attrs.min_color_temp_kelvin || attrs.max_color_temp_kelvin || attrs.min_mireds || attrs.max_mireds
+    );
+  });
+
+  const firstWithBoundsId =
+    primaryOnId ||
+    candidateIds.find((id) => {
+      const attrs = hassStates[id]?.attributes;
+      return attrs && (
+        attrs.min_color_temp_kelvin || attrs.max_color_temp_kelvin || attrs.min_mireds || attrs.max_mireds
+      );
+    }) ||
+    mainIds[0];
+
+  const attrs = firstWithBoundsId ? hassStates[firstWithBoundsId]?.attributes : undefined;
+  return resolveEntityKelvinBounds(attrs);
+}

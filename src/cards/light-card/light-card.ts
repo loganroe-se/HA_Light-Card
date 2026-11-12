@@ -9,6 +9,7 @@ import {
   CustomToggleConfig,
   getMainEntityIds,
   resolveDefaultSelectionEntities,
+  resolveEntityKelvinBounds,
   resolveImageCanvasHeight,
   resolveImageObjectFit
 } from "./light-card-config";
@@ -876,12 +877,11 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     const rawBrightness = attrs.brightness !== undefined ? attrs.brightness : (isOn ? 255 : 0);
     const brightnessPct = brightnessToPct(rawBrightness);
 
-    const entityMinKelvin =
-      attrs.min_color_temp_kelvin ||
-      (attrs.max_mireds ? Math.round(1000000 / attrs.max_mireds) : this._config?.min_kelvin || 2000);
-    const entityMaxKelvin =
-      attrs.max_color_temp_kelvin ||
-      (attrs.min_mireds ? Math.round(1000000 / attrs.min_mireds) : this._config?.max_kelvin || 6500);
+    const { minKelvin: entityMinKelvin, maxKelvin: entityMaxKelvin } = resolveEntityKelvinBounds(
+      attrs,
+      this._config?.min_kelvin || 2000,
+      this._config?.max_kelvin || 6500
+    );
     const rawMinKelvin =
       this._hasCustomMinKelvin && this._config?.min_kelvin !== undefined
         ? Number(this._config.min_kelvin)
@@ -1411,6 +1411,11 @@ export class HaLightCard extends LitElement implements LovelaceCard {
     this.hass.callService("light", "turn_on", serviceData);
   }
 
+  private _kelvinMatches(actualKelvin: number, targetKelvin: number): boolean {
+    // Allow a small +/- 25K tolerance for mired/step rounding differences (e.g. 2700K -> 2702K).
+    return Math.abs(actualKelvin - targetKelvin) <= 25;
+  }
+
   private _isPresetActive(preset: PresetConfig, data: any): boolean {
     if (!data.isOn) return false;
 
@@ -1426,7 +1431,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
 
     if (preset.kelvin !== undefined) {
       hasAnyField = true;
-      if (data.kelvin !== preset.kelvin) {
+      if (!this._kelvinMatches(data.kelvin, preset.kelvin)) {
         return false;
       }
     } else if (presetRgb) {
@@ -1527,7 +1532,7 @@ export class HaLightCard extends LitElement implements LovelaceCard {
   }
 
   private _isTempSubpresetActive(kelvin: number, data: any): boolean {
-    return data.isOn && data.kelvin === kelvin;
+    return data.isOn && this._kelvinMatches(data.kelvin, kelvin);
   }
 
   private _isColorSubpresetActive(hexColor: string, data: any): boolean {
